@@ -4,7 +4,7 @@
  */
 
 const DB_NAME = 'FSMonitoringDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 class OfflineDB {
     constructor() {
@@ -46,6 +46,28 @@ class OfflineDB {
                 if (!db.objectStoreNames.contains('checklistItems')) {
                     const store = db.createObjectStore('checklistItems', { keyPath: 'id' });
                     store.createIndex('checklistId', 'checklist_id', { unique: false });
+                }
+
+                // Hygiene employees cache
+                if (!db.objectStoreNames.contains('hygieneEmployees')) {
+                    db.createObjectStore('hygieneEmployees', { keyPath: 'id' });
+                }
+
+                // Hygiene checklist items cache
+                if (!db.objectStoreNames.contains('hygieneChecklistItems')) {
+                    db.createObjectStore('hygieneChecklistItems', { keyPath: 'id' });
+                }
+
+                // Hygiene settings cache
+                if (!db.objectStoreNames.contains('hygieneSettings')) {
+                    db.createObjectStore('hygieneSettings', { keyPath: 'key' });
+                }
+
+                // Pending hygiene submissions (offline)
+                if (!db.objectStoreNames.contains('pendingHygieneSubmissions')) {
+                    const store = db.createObjectStore('pendingHygieneSubmissions', { keyPath: 'localId', autoIncrement: true });
+                    store.createIndex('status', 'status', { unique: false });
+                    store.createIndex('createdAt', 'createdAt', { unique: false });
                 }
 
                 // Pending audits (offline submissions)

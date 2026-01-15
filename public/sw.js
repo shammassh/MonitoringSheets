@@ -1,28 +1,31 @@
 // Service Worker for FS Monitoring PWA
 // Enables offline functionality
 
-const CACHE_NAME = 'fs-monitoring-v1';
+const CACHE_NAME = 'fs-monitoring-v3';
 const OFFLINE_URL = '/offline.html';
 
 // Files to cache for offline use
 const STATIC_ASSETS = [
-    '/',
     '/offline.html',
-    '/css/app.css',
-    '/css/responsive.css',
-    '/js/app.js',
-    '/js/offline-db.js',
-    '/js/sync-service.js',
-    '/manifest.json',
-    '/icons/icon-192.png',
-    '/icons/icon-512.png'
+    '/manifest.json'
+];
+
+// Pages to cache when visited
+const PAGES_TO_CACHE = [
+    '/dashboard',
+    '/hygiene-checklist',
+    '/hygiene-checklist/form',
+    '/hygiene-checklist/history',
+    '/hygiene-checklist/settings'
 ];
 
 // API routes to cache responses
-const API_CACHE = 'fs-monitoring-api-v1';
+const API_CACHE = 'fs-monitoring-api-v3';
 const CACHEABLE_API_ROUTES = [
-    '/api/auditor/stores',
-    '/api/auditor/checklists'
+    '/hygiene-checklist/api/employees',
+    '/hygiene-checklist/api/checklist-items',
+    '/hygiene-checklist/api/settings',
+    '/hygiene-checklist/api/me'
 ];
 
 // Install event - cache static assets
@@ -62,15 +65,56 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Handle API requests
+    // Handle hygiene-checklist API requests
+    if (url.pathname.startsWith('/hygiene-checklist/api/')) {
+        event.respondWith(handleApiRequest(request));
+        return;
+    }
+
+    // Handle other API requests
     if (url.pathname.startsWith('/api/')) {
         event.respondWith(handleApiRequest(request));
+        return;
+    }
+
+    // Handle page navigation (HTML pages)
+    if (request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html')) {
+        event.respondWith(handlePageRequest(request));
         return;
     }
 
     // Handle static assets
     event.respondWith(handleStaticRequest(request));
 });
+
+// Handle page requests - Network first, cache fallback
+async function handlePageRequest(request) {
+    const url = new URL(request.url);
+    
+    try {
+        const response = await fetch(request);
+        
+        // Cache successful page responses
+        if (response.ok) {
+            const cache = await caches.open(CACHE_NAME);
+            cache.put(request, response.clone());
+            console.log('[SW] Cached page:', url.pathname);
+        }
+        
+        return response;
+    } catch (error) {
+        // Network failed, try cache
+        const cachedResponse = await caches.match(request);
+        if (cachedResponse) {
+            console.log('[SW] Serving page from cache:', url.pathname);
+            return cachedResponse;
+        }
+        
+        // Return offline page
+        console.log('[SW] No cache for:', url.pathname, '- showing offline page');
+        return caches.match(OFFLINE_URL);
+    }
+}
 
 // Handle API requests - Network first, fallback to cache
 async function handleApiRequest(request) {
@@ -83,6 +127,7 @@ async function handleApiRequest(request) {
         if (response.ok && CACHEABLE_API_ROUTES.some(route => url.pathname.includes(route))) {
             const cache = await caches.open(API_CACHE);
             cache.put(request, response.clone());
+            console.log('[SW] Cached API:', url.pathname);
         }
         
         return response;

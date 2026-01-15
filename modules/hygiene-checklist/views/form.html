@@ -843,29 +843,208 @@
         let checklistItems = [];
         let checklistData = {}; // { empId: { absent: bool, items: { itemId: { checked: bool, corrective: string } } } }
         let currentCorrectiveEdit = null; // { empId, itemId }
+        let isOffline = !navigator.onLine;
+        let offlineDB = null;
         
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('check-date').valueAsDate = new Date();
+            
+            // Initialize offline database
+            await initOfflineDB();
+            
+            // Listen for online/offline status
+            window.addEventListener('online', handleOnline);
+            window.addEventListener('offline', handleOffline);
+            updateOnlineStatus();
+            
             await loadData();
+            
+            // Register service worker
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/sw.js');
+            }
         });
+        
+        async function initOfflineDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('HygieneChecklistDB', 1);
+                
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => {
+                    offlineDB = request.result;
+                    resolve(offlineDB);
+                };
+                
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    
+                    if (!db.objectStoreNames.contains('employees')) {
+                        db.createObjectStore('employees', { keyPath: 'id' });
+                    }
+                    if (!db.objectStoreNames.contains('checklistItems')) {
+                        db.createObjectStore('checklistItems', { keyPath: 'id' });
+                    }
+                    if (!db.objectStoreNames.contains('pendingSubmissions')) {
+                        const store = db.createObjectStore('pendingSubmissions', { keyPath: 'localId', autoIncrement: true });
+                        store.createIndex('status', 'status');
+                    }
+                };
+            });
+        }
+        
+        function updateOnlineStatus() {
+            isOffline = !navigator.onLine;
+            const statusEl = document.querySelector('.header-title');
+            if (isOffline) {
+                statusEl.innerHTML = 'Employee Hygiene Checklist <span style="font-size: 0.7em; background: #fbbf24; color: #92400e; padding: 2px 8px; border-radius: 10px; margin-left: 8px;">OFFLINE</span>';
+            } else {
+                statusEl.textContent = 'Employee Hygiene Checklist';
+            }
+        }
+        
+        function handleOnline() {
+            isOffline = false;
+            updateOnlineStatus();
+            showNotification('Back online! Syncing pending data...', 'success');
+            syncPendingSubmissions();
+        }
+        
+        function handleOffline() {
+            isOffline = true;
+            updateOnlineStatus();
+            showNotification('You are offline. Data will be saved locally.', 'warning');
+        }
         
         async function loadData() {
             try {
-                const [empRes, itemRes] = await Promise.all([
-                    fetch('/hygiene-checklist/api/employees'),
-                    fetch('/hygiene-checklist/api/checklist-items')
-                ]);
-                
-                employees = await empRes.json();
-                checklistItems = await itemRes.json();
+                if (navigator.onLine) {
+                    const [empRes, itemRes] = await Promise.all([
+                        fetch('/hygiene-checklist/api/employees'),
+                        fetch('/hygiene-checklist/api/checklist-items')
+                    ]);
+                    
+                    employees = await empRes.json();
+                    checklistItems = await itemRes.json();
+                    
+                    // Cache data for offline use
+                    await cacheDataOffline(employees, checklistItems);
+                } else {
+                    // Load from offline cache
+                    employees = await getFromOfflineDB('employees');
+                    checklistItems = await getFromOfflineDB('checklistItems');
+                }
                 
                 initializeChecklistData();
                 renderTable();
                 updateStats();
+                
+                // Check for pending submissions
+                await checkPendingSubmissions();
             } catch (e) {
                 console.error('Failed to load data:', e);
-                showNotification('Failed to load data', 'error');
+                // Try offline cache
+                try {
+                    employees = await getFromOfflineDB('employees');
+                    checklistItems = await getFromOfflineDB('checklistItems');
+                    initializeChecklistData();
+                    renderTable();
+                    updateStats();
+                    showNotification('Loaded cached data', 'info');
+                } catch (e2) {
+                    showNotification('Failed to load data', 'error');
+                }
+            }
+        }
+        
+        async function cacheDataOffline(emps, items) {
+            if (!offlineDB) return;
+            
+            const tx = offlineDB.transaction(['employees', 'checklistItems'], 'readwrite');
+            const empStore = tx.objectStore('employees');
+            const itemStore = tx.objectStore('checklistItems');
+            
+            // Clear and re-add
+            empStore.clear();
+            itemStore.clear();
+            
+            emps.forEach(e => empStore.put(e));
+            items.forEach(i => itemStore.put(i));
+        }
+        
+        async function getFromOfflineDB(storeName) {
+            return new Promise((resolve, reject) => {
+                if (!offlineDB) return resolve([]);
+                
+                const tx = offlineDB.transaction(storeName, 'readonly');
+                const store = tx.objectStore(storeName);
+                const request = store.getAll();
+                
+                request.onsuccess = () => resolve(request.result || []);
+                request.onerror = () => reject(request.error);
+            });
+        }
+        
+        async function savePendingSubmission(data) {
+            return new Promise((resolve, reject) => {
+                if (!offlineDB) return reject('No offline DB');
+                
+                const tx = offlineDB.transaction('pendingSubmissions', 'readwrite');
+                const store = tx.objectStore('pendingSubmissions');
+                const request = store.add({
+                    ...data,
+                    status: 'pending',
+                    createdAt: new Date().toISOString()
+                });
+                
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+        
+        async function checkPendingSubmissions() {
+            try {
+                const pending = await getFromOfflineDB('pendingSubmissions');
+                if (pending.length > 0) {
+                    showNotification(`${pending.length} pending submission(s) waiting to sync`, 'warning');
+                }
+            } catch (e) {
+                console.error('Error checking pending:', e);
+            }
+        }
+        
+        async function syncPendingSubmissions() {
+            if (!offlineDB || !navigator.onLine) return;
+            
+            try {
+                const tx = offlineDB.transaction('pendingSubmissions', 'readonly');
+                const store = tx.objectStore('pendingSubmissions');
+                const request = store.getAll();
+                
+                request.onsuccess = async () => {
+                    const pending = request.result || [];
+                    
+                    for (const submission of pending) {
+                        try {
+                            const res = await fetch('/hygiene-checklist/api/hygiene-checklists/batch', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(submission.payload)
+                            });
+                            
+                            if (res.ok) {
+                                // Remove from pending
+                                const delTx = offlineDB.transaction('pendingSubmissions', 'readwrite');
+                                delTx.objectStore('pendingSubmissions').delete(submission.localId);
+                                showNotification(`Synced offline submission from ${submission.payload.check_date}`, 'success');
+                            }
+                        } catch (e) {
+                            console.error('Failed to sync:', e);
+                        }
+                    }
+                };
+            } catch (e) {
+                console.error('Sync error:', e);
             }
         }
         
@@ -1239,7 +1418,7 @@
             submitBtn.disabled = true;
             submitBtn.innerHTML = `
                 <div class="loading-spinner" style="width: 20px; height: 20px; margin: 0;"></div>
-                Submitting...
+                ${isOffline ? 'Saving Offline...' : 'Submitting...'}
             `;
             
             const shift = document.getElementById('shift').value;
@@ -1261,15 +1440,41 @@
                 };
             });
             
+            const payload = {
+                check_date,
+                shift,
+                employees: employeesPayload
+            };
+            
+            // If offline, save locally
+            if (isOffline) {
+                try {
+                    await savePendingSubmission({ payload });
+                    document.getElementById('success-doc-number').textContent = 'OFFLINE-' + Date.now();
+                    document.getElementById('success-message').innerHTML = 
+                        `<strong style="color: #f59e0b;">⚠️ Saved Offline</strong><br>
+                         ${employeesPayload.length} employees checked. Data will sync when you're back online.`;
+                    document.getElementById('success-overlay').classList.add('active');
+                } catch (e) {
+                    console.error('Offline save error:', e);
+                    showNotification('Failed to save offline', 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = `
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                        Submit All Checklists
+                    `;
+                }
+                return;
+            }
+            
             try {
                 const res = await fetch('/hygiene-checklist/api/hygiene-checklists/batch', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        check_date,
-                        shift,
-                        employees: employeesPayload
-                    })
+                    body: JSON.stringify(payload)
                 });
                 
                 const result = await res.json();
@@ -1292,15 +1497,25 @@
                 }
             } catch (e) {
                 console.error('Submit error:', e);
-                showNotification('Network error. Please try again.', 'error');
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = `
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                    </svg>
-                    Submit All Checklists
-                `;
+                // Network failed - save offline
+                try {
+                    await savePendingSubmission({ payload });
+                    document.getElementById('success-doc-number').textContent = 'OFFLINE-' + Date.now();
+                    document.getElementById('success-message').innerHTML = 
+                        `<strong style="color: #f59e0b;">⚠️ Saved Offline</strong><br>
+                         Network error occurred. Data saved locally and will sync when online.`;
+                    document.getElementById('success-overlay').classList.add('active');
+                } catch (e2) {
+                    showNotification('Network error. Please try again.', 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = `
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                        Submit All Checklists
+                    `;
+                }
             }
         }
         
