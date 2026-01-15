@@ -415,8 +415,27 @@
     <script>
         // Load stats on page load
         document.addEventListener('DOMContentLoaded', async () => {
+            await loadUserInfo();
             await loadStats();
         });
+        
+        async function loadUserInfo() {
+            try {
+                const res = await fetch('/hygiene-checklist/api/me');
+                if (res.ok) {
+                    const user = await res.json();
+                    document.getElementById('user-name').textContent = user.display_name || user.email || 'User';
+                    document.getElementById('user-role').textContent = user.role || 'User';
+                    document.getElementById('user-avatar').textContent = (user.display_name || user.email || 'U').charAt(0).toUpperCase();
+                } else {
+                    document.getElementById('user-name').textContent = 'User';
+                    document.getElementById('user-role').textContent = '';
+                }
+            } catch (error) {
+                console.error('Error loading user info:', error);
+                document.getElementById('user-name').textContent = 'User';
+            }
+        }
         
         async function loadStats() {
             try {
