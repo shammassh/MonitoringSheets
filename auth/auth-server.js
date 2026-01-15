@@ -128,12 +128,18 @@ class AuthServer {
         // ==========================================
         
         // Admin user management page
-        this.app.get('/admin/users', requireAuth, requireRole('Admin'), (req, res) => {
-            UserManagementPage.render(req, res);
+        this.app.get('/admin/users', requireAuth, requireRole('Admin', 'SuperAuditor'), (req, res) => {
+            const filePath = path.join(__dirname, '../admin/pages/user-management.html');
+            res.sendFile(filePath, (err) => {
+                if (err) {
+                    console.error('❌ Error serving user management page:', err);
+                    res.status(500).send('Error loading user management page');
+                }
+            });
         });
         
         // Alias: /admin/user-management -> /admin/users
-        this.app.get('/admin/user-management', requireAuth, requireRole('Admin'), (req, res) => {
+        this.app.get('/admin/user-management', requireAuth, requireRole('Admin', 'SuperAuditor'), (req, res) => {
             res.redirect('/admin/users');
         });
 
@@ -315,7 +321,7 @@ class AuthServer {
         });
         
         // API: Get all users
-        this.app.get('/api/admin/users', requireAuth, requireRole('Admin'), async (req, res) => {
+        this.app.get('/api/admin/users', requireAuth, requireRole('Admin', 'SuperAuditor'), async (req, res) => {
             try {
                 const users = await RoleAssignmentService.getAllUsers();
                 res.json({ users });
@@ -326,7 +332,7 @@ class AuthServer {
         });
         
         // API: Update user
-        this.app.patch('/api/admin/users/:userId', requireAuth, requireRole('Admin'), async (req, res) => {
+        this.app.patch('/api/admin/users/:userId', requireAuth, requireRole('Admin', 'SuperAuditor'), async (req, res) => {
             try {
                 const userId = parseInt(req.params.userId);
                 const updateData = req.body;
@@ -348,7 +354,7 @@ class AuthServer {
         });
         
         // API: Update user status (active/inactive)
-        this.app.patch('/api/admin/users/:userId/status', requireAuth, requireRole('Admin'), async (req, res) => {
+        this.app.patch('/api/admin/users/:userId/status', requireAuth, requireRole('Admin', 'SuperAuditor'), async (req, res) => {
             try {
                 const userId = parseInt(req.params.userId);
                 const { is_active } = req.body;
@@ -370,7 +376,7 @@ class AuthServer {
         });
         
         // API: Sync users from Microsoft Graph
-        this.app.post('/api/admin/sync-graph', requireAuth, requireRole('Admin'), async (req, res) => {
+        this.app.post('/api/admin/sync-graph', requireAuth, requireRole('Admin', 'SuperAuditor'), async (req, res) => {
             try {
                 const graphService = new GraphUsersService();
                 const graphUsers = await graphService.getAllUsers();
