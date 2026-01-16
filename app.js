@@ -18,6 +18,7 @@ const { initializeAuth, requireAuth, requireRole } = require('./auth/auth-server
 const hygieneChecklistModule = require('./modules/hygiene-checklist');
 const equipmentCalibrationModule = require('./modules/equipment-calibration');
 const fryingOilModule = require('./modules/frying-oil');
+const foodSafetyModule = require('./modules/food-safety');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -42,6 +43,9 @@ app.use('/equipment-calibration', requireAuth, equipmentCalibrationModule);
 
 // Frying Oil Verification Module (with /frying-oil prefix)
 app.use('/frying-oil', requireAuth, fryingOilModule);
+
+// Food Safety Verification Module (with /food-safety prefix)
+app.use('/food-safety', requireAuth, foodSafetyModule);
 
 // ==========================================
 // Page Routes
