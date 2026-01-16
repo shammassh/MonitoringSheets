@@ -99,7 +99,7 @@ class OAuthCallbackHandler {
         
         const tokenRequest = {
             code,
-            scopes: ['User.Read', 'User.ReadBasic.All'],
+            scopes: ['User.Read', 'User.ReadBasic.All', 'Sites.Read.All'],
             redirectUri
         };
         

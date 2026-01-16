@@ -21,6 +21,7 @@ const requireRole = require('./middleware/require-role');
 // Import admin modules
 const UserManagementPage = require('../admin/pages/user-management');
 const GraphUsersService = require('../admin/services/graph-users-service');
+const SharePointUsersService = require('../admin/services/sharepoint-users-service');
 const RoleAssignmentService = require('../admin/services/role-assignment-service');
 
 // Import auditor modules
@@ -393,6 +394,55 @@ class AuthServer {
                 res.json(result);
             } catch (error) {
                 console.error('[API] Error syncing from Graph:', error);
+                res.status(500).json({ error: error.message });
+            }
+        });
+        
+        // API: Sync users from SharePoint Site Users (alternative - uses delegated permissions)
+        this.app.post('/api/admin/sync-sharepoint', requireAuth, requireRole('Admin', 'SuperAuditor'), async (req, res) => {
+            try {
+                console.log('[API] Starting SharePoint user sync...');
+                console.log('[API] Using delegated token from logged-in user:', req.currentUser.email);
+                
+                // Pass the user's access token for delegated permissions
+                const userToken = req.currentUser.accessToken;
+                if (!userToken) {
+                    return res.status(400).json({
+                        success: false,
+                        error: 'No access token available. Please log out and log in again.'
+                    });
+                }
+                
+                const sharePointService = new SharePointUsersService(userToken);
+                const sharePointUsers = await sharePointService.getUsers();
+                
+                console.log(`[API] Found ${sharePointUsers.length} users from SharePoint`);
+                
+                if (sharePointUsers.length === 0) {
+                    return res.json({
+                        success: true,
+                        message: 'No users found. Check SharePoint site permissions or SHAREPOINT_SITE_URL environment variable.',
+                        newUsers: 0,
+                        updatedUsers: 0,
+                        totalUsers: 0
+                    });
+                }
+                
+                const result = await RoleAssignmentService.syncUsersFromGraph(sharePointUsers);
+                
+                // Log action
+                await RoleAssignmentService.logAction(
+                    req.currentUser.id,
+                    'SYNC_SHAREPOINT_USERS',
+                    { newUsers: result.newUsers, updatedUsers: result.updatedUsers, source: 'SharePoint' }
+                );
+                
+                res.json({
+                    ...result,
+                    source: 'SharePoint Site Users'
+                });
+            } catch (error) {
+                console.error('[API] Error syncing from SharePoint:', error);
                 res.status(500).json({ error: error.message });
             }
         });
