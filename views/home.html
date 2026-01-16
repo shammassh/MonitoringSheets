@@ -224,6 +224,15 @@
             background: linear-gradient(90deg, #ea580c, #f97316);
         }
         
+        .app-icon.dry-store-expiry {
+            background: linear-gradient(135deg, #fce7f3, #fbcfe8);
+            color: #be185d;
+        }
+        
+        .app-card.dry-store-expiry::before {
+            background: linear-gradient(90deg, #be185d, #db2777);
+        }
+        
         .app-icon.temperature {
             background: linear-gradient(135deg, #fef3c7, #fde68a);
             color: #d97706;
@@ -543,6 +552,29 @@
                     <h3 class="app-title">Hot Holding</h3>
                     <p class="app-description">
                         Monitor hot holding temperatures for food safety. Track product and unit temperatures.
+                    </p>
+                    <div class="app-arrow">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                    </div>
+                </a>
+
+                <!-- Dry Store Expiry Check -->
+                <a href="/dry-store-expiry" class="app-card dry-store-expiry">
+                    <div class="app-icon dry-store-expiry">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/>
+                            <path d="M16 2v4"/>
+                            <path d="M8 2v4"/>
+                            <path d="M3 10h5"/>
+                            <path d="M17.5 17.5L16 16.25V14"/>
+                            <circle cx="16" cy="16" r="6"/>
+                        </svg>
+                    </div>
+                    <h3 class="app-title">Dry Store Expiry</h3>
+                    <p class="app-description">
+                        Track dry store product expiry dates. Color-coded alerts for expired and expiring soon items.
                     </p>
                     <div class="app-arrow">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
