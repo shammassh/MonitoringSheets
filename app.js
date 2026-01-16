@@ -20,6 +20,7 @@ const equipmentCalibrationModule = require('./modules/equipment-calibration');
 const fryingOilModule = require('./modules/frying-oil');
 const foodSafetyModule = require('./modules/food-safety');
 const dryStoreModule = require('./modules/dry-store');
+const waterQualityModule = require('./modules/water-quality');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -50,6 +51,9 @@ app.use('/food-safety', requireAuth, foodSafetyModule);
 
 // Dry Store Temperature & Humidity Module (with /dry-store prefix)
 app.use('/dry-store', requireAuth, dryStoreModule);
+
+// Water Quality Monitoring Module (with /water-quality prefix)
+app.use('/water-quality', requireAuth, waterQualityModule);
 
 // ==========================================
 // Page Routes
