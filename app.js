@@ -133,6 +133,11 @@ app.get('/dashboard', requireAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'home.html'));
 });
 
+// Home route (alias for dashboard)
+app.get('/home', requireAuth, (req, res) => {
+    res.sendFile(path.join(__dirname, 'views', 'home.html'));
+});
+
 // Legacy routes - redirect to module paths
 app.get('/employees', requireAuth, (req, res) => {
     res.redirect('/hygiene-checklist/employees');
