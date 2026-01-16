@@ -16,6 +16,7 @@ const { initializeAuth, requireAuth, requireRole } = require('./auth/auth-server
 
 // Import modules
 const hygieneChecklistModule = require('./modules/hygiene-checklist');
+const equipmentCalibrationModule = require('./modules/equipment-calibration');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -34,6 +35,9 @@ initializeAuth(app);
 
 // Hygiene Checklist Module (with /hygiene-checklist prefix)
 app.use('/hygiene-checklist', requireAuth, hygieneChecklistModule);
+
+// Equipment Calibration Module (with /equipment-calibration prefix)
+app.use('/equipment-calibration', requireAuth, equipmentCalibrationModule);
 
 // ==========================================
 // Page Routes
