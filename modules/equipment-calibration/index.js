@@ -50,6 +50,11 @@ router.get('/settings', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'settings.html'));
 });
 
+// Schedule page
+router.get('/schedule', (req, res) => {
+    res.sendFile(path.join(__dirname, 'views', 'schedule.html'));
+});
+
 // ==========================================
 // API Routes - Current User
 // ==========================================
@@ -78,6 +83,53 @@ router.get('/api/references', async (req, res) => {
         res.json(result.recordset);
     } catch (error) {
         console.error('Error fetching references:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get schedule (equipment with due dates)
+router.get('/api/schedule', async (req, res) => {
+    try {
+        const pool = await sql.connect(config.database);
+        const result = await pool.request().query(`
+            SELECT 
+                r.id,
+                r.name,
+                r.frequency,
+                r.next_due_date,
+                r.last_calibration_date
+            FROM CalibrationReferences r
+            WHERE r.is_active = 1
+            ORDER BY 
+                CASE WHEN r.next_due_date IS NULL THEN 1 ELSE 0 END,
+                r.next_due_date
+        `);
+        res.json(result.recordset);
+    } catch (error) {
+        console.error('Error fetching schedule:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get alert count (overdue + due today)
+router.get('/api/alerts/count', async (req, res) => {
+    try {
+        const pool = await sql.connect(config.database);
+        const result = await pool.request().query(`
+            SELECT 
+                SUM(CASE WHEN next_due_date < CAST(GETDATE() AS DATE) THEN 1 ELSE 0 END) as overdue,
+                SUM(CASE WHEN next_due_date = CAST(GETDATE() AS DATE) THEN 1 ELSE 0 END) as due_today
+            FROM CalibrationReferences
+            WHERE is_active = 1 AND next_due_date IS NOT NULL
+        `);
+        const counts = result.recordset[0];
+        res.json({
+            overdue: counts.overdue || 0,
+            dueToday: counts.due_today || 0,
+            total: (counts.overdue || 0) + (counts.due_today || 0)
+        });
+    } catch (error) {
+        console.error('Error fetching alert count:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -229,7 +281,7 @@ router.post('/api/calibrations/batch', async (req, res) => {
         
         const session_id = sessionResult.recordset[0].id;
         
-        // Insert all records
+        // Insert all records and update due dates
         for (const record of records) {
             await pool.request()
                 .input('session_id', sql.Int, session_id)
@@ -243,6 +295,21 @@ router.post('/api/calibrations/batch', async (req, res) => {
                     INSERT INTO CalibrationRecords (session_id, reference_id, measured_value, deviation, status, remarks, corrective_action)
                     VALUES (@session_id, @reference_id, @measured_value, @deviation, @status, @remarks, @corrective_action)
                 `);
+            
+            // Update the reference with last calibration date and next due date
+            if (record.next_due_date) {
+                await pool.request()
+                    .input('reference_id', sql.Int, record.reference_id)
+                    .input('calibration_date', sql.Date, calibration_date)
+                    .input('next_due_date', sql.Date, record.next_due_date)
+                    .query(`
+                        UPDATE CalibrationReferences 
+                        SET last_calibration_date = @calibration_date,
+                            next_due_date = @next_due_date,
+                            updated_at = GETDATE()
+                        WHERE id = @reference_id
+                    `);
+            }
         }
         
         res.status(201).json({ 
