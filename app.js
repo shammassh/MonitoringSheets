@@ -19,6 +19,7 @@ const hygieneChecklistModule = require('./modules/hygiene-checklist');
 const equipmentCalibrationModule = require('./modules/equipment-calibration');
 const fryingOilModule = require('./modules/frying-oil');
 const foodSafetyModule = require('./modules/food-safety');
+const dryStoreModule = require('./modules/dry-store');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -46,6 +47,9 @@ app.use('/frying-oil', requireAuth, fryingOilModule);
 
 // Food Safety Verification Module (with /food-safety prefix)
 app.use('/food-safety', requireAuth, foodSafetyModule);
+
+// Dry Store Temperature & Humidity Module (with /dry-store prefix)
+app.use('/dry-store', requireAuth, dryStoreModule);
 
 // ==========================================
 // Page Routes
