@@ -251,6 +251,15 @@
             background: linear-gradient(90deg, #4f46e5, #6366f1);
         }
         
+        .app-icon.veg-fruit-wash {
+            background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+            color: #16a34a;
+        }
+        
+        .app-card.veg-fruit-wash::before {
+            background: linear-gradient(90deg, #16a34a, #22c55e);
+        }
+        
         .app-icon.temperature {
             background: linear-gradient(135deg, #fef3c7, #fde68a);
             color: #d97706;
@@ -637,6 +646,25 @@
                     <h3 class="app-title">Fridge Temperature</h3>
                     <p class="app-description">
                         Monitor fridge and freezer temperatures every 3 hours throughout the day.
+                    </p>
+                    <div class="app-arrow">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                    </div>
+                </a>
+
+                <!-- Veg & Fruit Washing Monitoring -->
+                <a href="/veg-fruit-wash" class="app-card veg-fruit-wash">
+                    <div class="app-icon veg-fruit-wash">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+                            <path d="M7 14l2-2 2 2 4-4"/>
+                        </svg>
+                    </div>
+                    <h3 class="app-title">Veg & Fruit Washing</h3>
+                    <p class="app-description">
+                        Track washing and disinfecting of vegetables and fruits with concentration records.
                     </p>
                     <div class="app-arrow">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
