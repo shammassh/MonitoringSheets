@@ -22,6 +22,7 @@ const foodSafetyModule = require('./modules/food-safety');
 const dryStoreModule = require('./modules/dry-store');
 const waterQualityModule = require('./modules/water-quality');
 const atpMonitoringModule = require('./modules/atp-monitoring');
+const hotHoldingModule = require('./modules/hot-holding');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -58,6 +59,9 @@ app.use('/water-quality', requireAuth, waterQualityModule);
 
 // ATP Monitoring Module (with /atp-monitoring prefix)
 app.use('/atp-monitoring', requireAuth, atpMonitoringModule);
+
+// Hot Holding Quality Control Module (with /hot-holding prefix)
+app.use('/hot-holding', requireAuth, hotHoldingModule);
 
 // ==========================================
 // Page Routes
