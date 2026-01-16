@@ -525,23 +525,36 @@
             list.innerHTML = filtered.map(eq => {
                 const dueText = eq.next_due_date 
                     ? new Date(eq.next_due_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-                    : 'Never calibrated';
+                    : 'Not set';
                 
-                const lastCalText = eq.last_calibration_date
-                    ? new Date(eq.last_calibration_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                // Use actual calibration date if available
+                const lastCalDate = eq.last_calibration_date_actual || eq.last_calibration_date;
+                const lastCalText = lastCalDate
+                    ? new Date(lastCalDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
                     : 'Never';
                 
                 const daysText = getDaysText(eq);
                 const isUrgent = eq.category === 'overdue' || eq.category === 'today';
                 
+                // Show document number and status if available
+                const docInfo = eq.document_number ? `📄 ${eq.document_number}` : '';
+                const statusBadge = eq.last_status 
+                    ? `<span style="background: ${eq.last_status === 'Pass' ? '#d1fae5' : '#fee2e2'}; color: ${eq.last_status === 'Pass' ? '#059669' : '#dc2626'}; padding: 0.125rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">${eq.last_status}</span>`
+                    : '';
+                const verifiedBadge = eq.verified 
+                    ? '<span style="color: #059669; font-size: 0.75rem;">✓ Verified</span>'
+                    : '';
+                
                 return `
                     <div class="schedule-item">
                         <div class="schedule-status ${eq.category}"></div>
                         <div class="schedule-info">
-                            <div class="schedule-name">${eq.name}</div>
+                            <div class="schedule-name">${eq.name} ${statusBadge}</div>
                             <div class="schedule-meta">
                                 <span>📊 ${eq.frequency}</span>
                                 <span>🕐 Last: ${lastCalText}</span>
+                                ${docInfo ? `<span>${docInfo}</span>` : ''}
+                                ${verifiedBadge}
                             </div>
                         </div>
                         <div class="schedule-due">

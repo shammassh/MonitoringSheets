@@ -87,7 +87,7 @@ router.get('/api/references', async (req, res) => {
     }
 });
 
-// Get schedule (equipment with due dates)
+// Get schedule (equipment with due dates from actual calibration records)
 router.get('/api/schedule', async (req, res) => {
     try {
         const pool = await sql.connect(config.database);
@@ -97,8 +97,27 @@ router.get('/api/schedule', async (req, res) => {
                 r.name,
                 r.frequency,
                 r.next_due_date,
-                r.last_calibration_date
+                r.last_calibration_date,
+                latest.session_id,
+                latest.document_number,
+                latest.calibration_date as last_calibration_date_actual,
+                latest.status as last_status,
+                latest.measured_value,
+                latest.verified
             FROM CalibrationReferences r
+            LEFT JOIN (
+                SELECT 
+                    cr.reference_id,
+                    cs.id as session_id,
+                    cs.document_number,
+                    cs.calibration_date,
+                    cs.verified,
+                    cr.status,
+                    cr.measured_value,
+                    ROW_NUMBER() OVER (PARTITION BY cr.reference_id ORDER BY cs.calibration_date DESC, cs.created_at DESC) as rn
+                FROM CalibrationRecords cr
+                JOIN CalibrationSessions cs ON cr.session_id = cs.id
+            ) latest ON r.id = latest.reference_id AND latest.rn = 1
             WHERE r.is_active = 1
             ORDER BY 
                 CASE WHEN r.next_due_date IS NULL THEN 1 ELSE 0 END,
