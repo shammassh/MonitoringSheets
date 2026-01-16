@@ -24,6 +24,7 @@ const waterQualityModule = require('./modules/water-quality');
 const atpMonitoringModule = require('./modules/atp-monitoring');
 const hotHoldingModule = require('./modules/hot-holding');
 const dryStoreExpiryModule = require('./modules/dry-store-expiry');
+const cookingCoolingModule = require('./modules/cooking-cooling');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -66,6 +67,9 @@ app.use('/hot-holding', requireAuth, hotHoldingModule);
 
 // Dry Store Expiry Check Module (with /dry-store-expiry prefix)
 app.use('/dry-store-expiry', requireAuth, dryStoreExpiryModule);
+
+// Cooking and Cooling Temperature Module (with /cooking-cooling prefix)
+app.use('/cooking-cooling', requireAuth, cookingCoolingModule);
 
 // ==========================================
 // Page Routes
