@@ -242,6 +242,15 @@
             background: linear-gradient(90deg, #0d9488, #14b8a6);
         }
         
+        .app-icon.fridge-temp {
+            background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+            color: #4f46e5;
+        }
+        
+        .app-card.fridge-temp::before {
+            background: linear-gradient(90deg, #4f46e5, #6366f1);
+        }
+        
         .app-icon.temperature {
             background: linear-gradient(135deg, #fef3c7, #fde68a);
             color: #d97706;
@@ -615,23 +624,26 @@
                     </div>
                 </a>
 
-                <!-- Temperature Monitoring (Coming Soon) -->
-                <div class="app-card temperature coming-soon">
-                    <div class="app-icon temperature">
+                <!-- Fridge Temperature Monitoring -->
+                <a href="/fridge-temp" class="app-card fridge-temp">
+                    <div class="app-icon fridge-temp">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path>
+                            <rect x="4" y="2" width="16" height="20" rx="2"/>
+                            <line x1="4" y1="10" x2="20" y2="10"/>
+                            <line x1="12" y1="6" x2="12" y2="6.01"/>
+                            <line x1="12" y1="14" x2="12" y2="18"/>
                         </svg>
                     </div>
-                    <h3 class="app-title">Temperature Log</h3>
+                    <h3 class="app-title">Fridge Temperature</h3>
                     <p class="app-description">
-                        Monitor and record fridge, freezer, and food temperatures throughout the day.
+                        Monitor fridge and freezer temperatures every 3 hours throughout the day.
                     </p>
                     <div class="app-arrow">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M5 12h14M12 5l7 7-7 7"/>
                         </svg>
                     </div>
-                </div>
+                </a>
 
                 <!-- Cleaning Schedule (Coming Soon) -->
                 <div class="app-card cleaning coming-soon">

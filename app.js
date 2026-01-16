@@ -25,6 +25,7 @@ const atpMonitoringModule = require('./modules/atp-monitoring');
 const hotHoldingModule = require('./modules/hot-holding');
 const dryStoreExpiryModule = require('./modules/dry-store-expiry');
 const cookingCoolingModule = require('./modules/cooking-cooling');
+const fridgeTempModule = require('./modules/fridge-temp');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -70,6 +71,9 @@ app.use('/dry-store-expiry', requireAuth, dryStoreExpiryModule);
 
 // Cooking and Cooling Temperature Module (with /cooking-cooling prefix)
 app.use('/cooking-cooling', requireAuth, cookingCoolingModule);
+
+// Fridge Temperature Monitoring Module (with /fridge-temp prefix)
+app.use('/fridge-temp', requireAuth, fridgeTempModule);
 
 // ==========================================
 // Page Routes
