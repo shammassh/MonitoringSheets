@@ -27,6 +27,7 @@ const dryStoreExpiryModule = require('./modules/dry-store-expiry');
 const cookingCoolingModule = require('./modules/cooking-cooling');
 const fridgeTempModule = require('./modules/fridge-temp');
 const vegFruitWashModule = require('./modules/veg-fruit-wash');
+const qualityControlReceivingModule = require('./modules/quality-control-receiving');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -78,6 +79,9 @@ app.use('/fridge-temp', requireAuth, fridgeTempModule);
 
 // Vegetables & Fruits Washing Monitoring Module (with /veg-fruit-wash prefix)
 app.use('/veg-fruit-wash', requireAuth, vegFruitWashModule);
+
+// Quality Control Receiving Checklist Module (Form 13) (with /quality-control-receiving prefix)
+app.use('/quality-control-receiving', requireAuth, qualityControlReceivingModule);
 
 // ==========================================
 // Page Routes

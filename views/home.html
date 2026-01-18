@@ -260,6 +260,15 @@
             background: linear-gradient(90deg, #16a34a, #22c55e);
         }
         
+        .app-icon.quality-control-receiving {
+            background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+            color: #059669;
+        }
+        
+        .app-card.quality-control-receiving::before {
+            background: linear-gradient(90deg, #059669, #10b981);
+        }
+        
         .app-icon.temperature {
             background: linear-gradient(135deg, #fef3c7, #fde68a);
             color: #d97706;
@@ -665,6 +674,28 @@
                     <h3 class="app-title">Veg & Fruit Washing</h3>
                     <p class="app-description">
                         Track washing and disinfecting of vegetables and fruits with concentration records.
+                    </p>
+                    <div class="app-arrow">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                    </div>
+                </a>
+
+                <!-- Quality Control Receiving (Form 13) -->
+                <a href="/quality-control-receiving" class="app-card quality-control-receiving">
+                    <div class="app-icon quality-control-receiving">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 8V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4"/>
+                            <polyline points="9 14 12 17 22 7"/>
+                            <path d="M13 5V3"/>
+                            <path d="M18 5V3"/>
+                            <path d="M8 5V3"/>
+                        </svg>
+                    </div>
+                    <h3 class="app-title">QC Receiving</h3>
+                    <p class="app-description">
+                        Track product receiving quality control: temperatures, inspections, storage times, and signatures.
                     </p>
                     <div class="app-arrow">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
