@@ -49,14 +49,40 @@ function calculateDuration(receivingTime, storageTime) {
     return stoMinutes - recMinutes;
 }
 
-// Convert time string (HH:mm) to a format SQL Server can accept
+// Convert time string (HH:mm or HH:mm:ss or HH:mm:ss.0000000) to a format SQL Server can accept
 function formatTimeForSQL(timeStr) {
-    if (!timeStr) return null;
-    // Add seconds if not present
-    if (timeStr.length === 5) {
-        return timeStr + ':00';
+    if (!timeStr || timeStr === 'null' || timeStr === 'undefined' || timeStr === '') {
+        return null;
     }
-    return timeStr;
+    
+    // Handle different time formats
+    let cleanTime = String(timeStr).trim();
+    
+    // If empty after trim, return null
+    if (!cleanTime) return null;
+    
+    // If it's just HH:mm, add seconds
+    if (/^\d{2}:\d{2}$/.test(cleanTime)) {
+        return cleanTime + ':00';
+    }
+    
+    // If it has milliseconds like "18:54:00.0000000", trim to HH:mm:ss
+    if (cleanTime.includes('.')) {
+        cleanTime = cleanTime.split('.')[0];
+    }
+    
+    // If it's longer than 8 chars, take first 8
+    if (cleanTime.length > 8) {
+        cleanTime = cleanTime.substring(0, 8);
+    }
+    
+    // If it's HH:mm:ss format, return as is
+    if (/^\d{2}:\d{2}:\d{2}$/.test(cleanTime)) {
+        return cleanTime;
+    }
+    
+    console.log('formatTimeForSQL: unexpected format, input=', timeStr, 'output=', cleanTime);
+    return cleanTime || null;
 }
 
 // Disable caching for API responses
@@ -72,30 +98,38 @@ router.use('/api', (req, res, next) => {
 // ==========================================
 
 router.get('/', (req, res) => {
-    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
+    res.set('Surrogate-Control', 'no-store');
+    res.set('ETag', Date.now().toString());
     res.sendFile(path.join(__dirname, 'views', 'index.html'));
 });
 
 router.get('/form', (req, res) => {
-    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
+    res.set('Surrogate-Control', 'no-store');
+    res.set('ETag', Date.now().toString());
     res.sendFile(path.join(__dirname, 'views', 'form.html'));
 });
 
 router.get('/history', (req, res) => {
-    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
+    res.set('Surrogate-Control', 'no-store');
+    res.set('ETag', Date.now().toString());
     res.sendFile(path.join(__dirname, 'views', 'history.html'));
 });
 
 router.get('/settings', (req, res) => {
-    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
+    res.set('Surrogate-Control', 'no-store');
+    res.set('ETag', Date.now().toString());
     res.sendFile(path.join(__dirname, 'views', 'settings.html'));
 });
 
@@ -258,11 +292,14 @@ router.get('/api/documents/check', async (req, res) => {
 // Get single document with entries
 router.get('/api/documents/:id', async (req, res) => {
     try {
+        console.log('GET /api/documents/:id called with id:', req.params.id);
         const pool = await getPool();
         
         const docResult = await pool.request()
             .input('id', sql.Int, req.params.id)
             .query('SELECT * FROM QCR_Documents WHERE id = @id');
+        
+        console.log('Document result:', docResult.recordset);
         
         if (docResult.recordset.length === 0) {
             return res.status(404).json({ error: 'Document not found' });
@@ -275,6 +312,8 @@ router.get('/api/documents/:id', async (req, res) => {
                     LEFT JOIN QCR_Suppliers s ON e.supplier_id = s.id
                     WHERE e.document_id = @document_id 
                     ORDER BY e.receiving_time`);
+        
+        console.log('Entries result count:', entriesResult.recordset.length);
         
         res.json({
             document: docResult.recordset[0],
@@ -474,8 +513,8 @@ router.post('/api/entries', async (req, res) => {
                     OUTPUT INSERTED.* 
                     VALUES (
                         @document_id, @product_name, @product_expiry_date, @supplier_id, @supplier_name,
-                        CAST(@receiving_time AS TIME), @receiving_temp, @receiving_area_clean, @product_well_covered,
-                        @pack_opened_inspected, @no_physical_hazards, CAST(@storage_time AS TIME), @storage_product_temp,
+                        TRY_CAST(@receiving_time AS TIME), @receiving_temp, @receiving_area_clean, @product_well_covered,
+                        @pack_opened_inspected, @no_physical_hazards, TRY_CAST(@storage_time AS TIME), @storage_product_temp,
                         @chiller_freezer_temp, @properly_stored, @duration_minutes, @comments,
                         @corrective_action, @quality_controller_signature, @signature_timestamp, @overall_status
                     )`);
@@ -490,6 +529,9 @@ router.post('/api/entries', async (req, res) => {
 // Update entry
 router.put('/api/entries/:id', async (req, res) => {
     try {
+        console.log('PUT /api/entries/:id called with id:', req.params.id);
+        console.log('Request body:', req.body);
+        
         const {
             product_name,
             product_expiry_date,
@@ -547,13 +589,13 @@ router.put('/api/entries/:id', async (req, res) => {
                     product_expiry_date = @product_expiry_date,
                     supplier_id = @supplier_id,
                     supplier_name = @supplier_name,
-                    receiving_time = CAST(@receiving_time AS TIME),
+                    receiving_time = TRY_CAST(@receiving_time AS TIME),
                     receiving_temp = @receiving_temp,
                     receiving_area_clean = @receiving_area_clean,
                     product_well_covered = @product_well_covered,
                     pack_opened_inspected = @pack_opened_inspected,
                     no_physical_hazards = @no_physical_hazards,
-                    storage_time = CAST(@storage_time AS TIME),
+                    storage_time = TRY_CAST(@storage_time AS TIME),
                     storage_product_temp = @storage_product_temp,
                     chiller_freezer_temp = @chiller_freezer_temp,
                     properly_stored = @properly_stored,
@@ -566,10 +608,11 @@ router.put('/api/entries/:id', async (req, res) => {
                     updated_at = GETDATE()
                     WHERE id = @id`);
         
+        console.log('Entry updated successfully, id:', req.params.id);
         res.json({ success: true });
     } catch (err) {
         console.error('Error updating entry:', err);
-        res.status(500).json({ error: 'Failed to update entry' });
+        res.status(500).json({ error: 'Failed to update entry: ' + err.message });
     }
 });
 

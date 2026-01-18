@@ -663,13 +663,19 @@
         // Load existing document for editing
         async function loadExistingDocument(docId) {
             try {
-                const response = await fetch(`/quality-control-receiving/api/documents/${docId}`);
+                console.log('Loading existing document:', docId);
+                const response = await fetch(`/quality-control-receiving/api/documents/${docId}?_t=${Date.now()}`);
+                console.log('Document response status:', response.status);
+                
                 if (!response.ok) {
                     showAlert('Document not found', 'error');
                     return;
                 }
                 
                 const data = await response.json();
+                console.log('Document data received:', data);
+                console.log('Entries in response:', data.entries);
+                
                 currentDocument = data.document;
                 
                 // Set date (format for input)
@@ -689,6 +695,10 @@
                 
                 // Load entries
                 entries = data.entries || [];
+                console.log('Setting entries array:', entries);
+                console.log('Entries count:', entries.length);
+                
+                document.getElementById('entryCount').textContent = entries.length;
                 renderEntriesTable();
                 
                 showAlert('Document loaded for editing', 'success');
@@ -822,9 +832,14 @@
         
         // Render entries table
         function renderEntriesTable() {
+            console.log('renderEntriesTable called, entries:', entries);
+            console.log('entries type:', typeof entries);
+            console.log('entries isArray:', Array.isArray(entries));
+            console.log('entries length:', entries ? entries.length : 'null/undefined');
+            
             const tbody = document.getElementById('entriesTableBody');
             
-            if (entries.length === 0) {
+            if (!entries || !Array.isArray(entries) || entries.length === 0) {
                 tbody.innerHTML = `
                     <tr>
                         <td colspan="18" style="text-align: center; padding: 2rem; color: #6b7280;">
@@ -980,18 +995,24 @@
                 const url = entryId ? `/quality-control-receiving/api/entries/${entryId}` : '/quality-control-receiving/api/entries';
                 const method = entryId ? 'PUT' : 'POST';
                 
+                console.log('Saving entry:', { url, method, entryId, entryData });
+                
                 const response = await fetch(url, {
                     method: method,
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(entryData)
                 });
                 
+                console.log('Save response status:', response.status);
+                const responseData = await response.json();
+                console.log('Save response data:', responseData);
+                
                 if (response.ok) {
                     closeModal();
                     await loadEntries();
                     showAlert(entryId ? 'Entry updated successfully' : 'Entry added successfully', 'success');
                 } else {
-                    showAlert('Failed to save entry', 'error');
+                    showAlert('Failed to save entry: ' + (responseData.error || 'Unknown error'), 'error');
                 }
             } catch (err) {
                 console.error('Error saving entry:', err);
