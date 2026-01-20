@@ -99,7 +99,7 @@ class OAuthCallbackHandler {
         
         const tokenRequest = {
             code,
-            scopes: ['User.Read', 'User.ReadBasic.All', 'Sites.Read.All'],
+            scopes: ['User.Read', 'User.ReadBasic.All'],
             redirectUri
         };
         
@@ -306,7 +306,7 @@ class OAuthCallbackHandler {
             
             case 'pending':
             default:
-                res.redirect('/auth/pending-approval');
+                res.redirect('/auth/pending');
                 break;
         }
     }
