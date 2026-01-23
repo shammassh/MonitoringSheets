@@ -31,6 +31,10 @@ router.get('/locations', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'locations.html'));
 });
 
+router.get('/branches', (req, res) => {
+    res.sendFile(path.join(__dirname, 'views', 'branches.html'));
+});
+
 // API: Get settings
 router.get('/api/settings', async (req, res) => {
     try {
@@ -117,6 +121,48 @@ router.delete('/api/locations/:id', async (req, res) => {
     } catch (err) {
         console.error('Error deleting location:', err);
         res.status(500).json({ error: 'Failed to delete location' });
+    }
+});
+
+// API: Get branches
+router.get('/api/branches', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .query('SELECT * FROM DryStoreBranches WHERE is_active = 1 ORDER BY name');
+        res.json(result.recordset);
+    } catch (err) {
+        console.error('Error fetching branches:', err);
+        res.status(500).json({ error: 'Failed to fetch branches' });
+    }
+});
+
+// API: Create branch
+router.post('/api/branches', async (req, res) => {
+    try {
+        const { name } = req.body;
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('name', sql.NVarChar, name)
+            .query('INSERT INTO DryStoreBranches (name) OUTPUT INSERTED.* VALUES (@name)');
+        res.status(201).json(result.recordset[0]);
+    } catch (err) {
+        console.error('Error creating branch:', err);
+        res.status(500).json({ error: 'Failed to create branch' });
+    }
+});
+
+// API: Delete branch
+router.delete('/api/branches/:id', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('id', sql.Int, req.params.id)
+            .query('UPDATE DryStoreBranches SET is_active = 0 WHERE id = @id');
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Error deleting branch:', err);
+        res.status(500).json({ error: 'Failed to delete branch' });
     }
 });
 

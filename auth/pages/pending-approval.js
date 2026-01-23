@@ -18,7 +18,7 @@ class PendingApprovalPage {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pending Approval - Food Safety Audit System</title>
+    <title>Pending Approval - Food Safety Management System</title>
     <style>
         * {
             margin: 0;
@@ -196,7 +196,7 @@ class PendingApprovalPage {
         <h1>Pending Administrator Approval</h1>
         <div class="subtitle">Your account is awaiting activation</div>
         
-        <p>Thank you for logging in to the Food Safety Audit System. Your account has been created successfully, but access is pending approval from an administrator.</p>
+        <p>Thank you for logging in to the Food Safety Management System. Your account has been created successfully, but access is pending approval from an administrator.</p>
         
         <div class="user-info">
             <h3>Your Account Information</h3>

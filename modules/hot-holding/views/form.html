@@ -368,9 +368,7 @@
 
                     <div class="form-group">
                         <label for="product">Product <span class="required">*</span></label>
-                        <select id="product" required>
-                            <option value="">Select Product</option>
-                        </select>
+                        <input type="text" id="product" placeholder="Enter product name" required>
                     </div>
                 </div>
 
@@ -411,7 +409,11 @@
                 <div class="form-grid">
                     <div class="form-group full-width">
                         <label for="shelfLife">Correct and Clear Shelf Life</label>
-                        <textarea id="shelfLife" placeholder="Enter shelf life information if applicable..."></textarea>
+                        <select id="shelfLife">
+                            <option value="">-- Select --</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                        </select>
                     </div>
 
                     <div class="form-group full-width">
@@ -450,7 +452,6 @@
         document.addEventListener('DOMContentLoaded', async () => {
             await Promise.all([
                 loadSettings(),
-                loadProducts(),
                 loadCurrentUser()
             ]);
             
@@ -484,23 +485,6 @@
                 }
             } catch (error) {
                 console.error('Error loading settings:', error);
-            }
-        }
-
-        async function loadProducts() {
-            try {
-                const response = await fetch('/hot-holding/api/products');
-                const products = await response.json();
-                
-                const select = document.getElementById('product');
-                products.forEach(product => {
-                    const option = document.createElement('option');
-                    option.value = product.name;
-                    option.textContent = product.name;
-                    select.appendChild(option);
-                });
-            } catch (error) {
-                console.error('Error loading products:', error);
             }
         }
 

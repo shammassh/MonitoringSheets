@@ -69,5 +69,20 @@ IF NOT EXISTS (SELECT 1 FROM DryStoreLocations WHERE name = 'Dry Store 2')
     INSERT INTO DryStoreLocations (name) VALUES ('Dry Store 2');
 GO
 
+-- Dry Store Branches Table
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='DryStoreBranches' AND xtype='U')
+CREATE TABLE DryStoreBranches (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    name NVARCHAR(255) NOT NULL,
+    is_active BIT DEFAULT 1,
+    created_at DATETIME DEFAULT GETDATE()
+);
+GO
+
+-- Insert default branches
+IF NOT EXISTS (SELECT 1 FROM DryStoreBranches WHERE name = 'Main Branch')
+    INSERT INTO DryStoreBranches (name) VALUES ('Main Branch');
+GO
+
 PRINT 'Dry Store Temperature and Humidity Monitoring tables created successfully';
 GO

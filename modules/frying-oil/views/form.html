@@ -173,6 +173,36 @@
             color: #374151;
         }
         
+        .status-display {
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+        
+        .status-display.neutral {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+        
+        .status-display.pass {
+            background: #dcfce7;
+            color: #166534;
+        }
+        
+        .status-display.fail {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        
+        .threshold-hint {
+            font-size: 0.85rem;
+            color: #6b7280;
+            margin-top: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
         .corrective-action-group {
             display: none;
             background: #fef3c7;
@@ -433,25 +463,18 @@
                         </div>
                     </div>
                     
-                    <div class="form-group">
-                        <label for="tested-value">Tested Value <span class="required">*</span></label>
-                        <input type="text" id="tested-value" placeholder="e.g., 18% TPM, Clear, Good" required oninput="validateForm()">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Status <span class="required">*</span></label>
-                        <div class="status-selector">
-                            <div class="status-option" onclick="selectStatus('Pass')">
-                                <div class="icon">✅</div>
-                                <div class="label">Pass</div>
-                            </div>
-                            <div class="status-option" onclick="selectStatus('Fail')">
-                                <div class="icon">❌</div>
-                                <div class="label">Fail</div>
-                            </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="tested-value">Tested Value %TPC <span class="required">*</span></label>
+                            <input type="number" step="0.1" id="tested-value" placeholder="Enter TPC value" required oninput="calculateStatus()">
                         </div>
-                        <input type="hidden" id="status" required>
+                        <div class="form-group">
+                            <label>Status</label>
+                            <div class="status-display neutral" id="status-display">--</div>
+                            <input type="hidden" id="status">
+                        </div>
                     </div>
+                    <div class="threshold-hint">Pass: ≤24% TPC | Fail: >24% TPC (Oil should be replaced)</div>
                     
                     <div class="corrective-action-group" id="corrective-action-group">
                         <div class="form-group" style="margin-bottom: 0;">
@@ -731,20 +754,51 @@
             return date;
         }
         
+        function calculateStatus() {
+            const testedValue = parseFloat(document.getElementById('tested-value').value);
+            const statusDisplay = document.getElementById('status-display');
+            const correctiveActionGroup = document.getElementById('corrective-action-group');
+            const TPC_THRESHOLD = 24; // Maximum acceptable TPC percentage
+            
+            if (isNaN(testedValue)) {
+                statusDisplay.textContent = '--';
+                statusDisplay.className = 'status-display neutral';
+                selectedStatus = '';
+                document.getElementById('status').value = '';
+                correctiveActionGroup.classList.remove('show');
+                validateForm();
+                return;
+            }
+            
+            if (testedValue <= TPC_THRESHOLD) {
+                selectedStatus = 'Pass';
+                statusDisplay.textContent = '✅ Pass';
+                statusDisplay.className = 'status-display pass';
+                correctiveActionGroup.classList.remove('show');
+            } else {
+                selectedStatus = 'Fail';
+                statusDisplay.textContent = '❌ Fail';
+                statusDisplay.className = 'status-display fail';
+                correctiveActionGroup.classList.add('show');
+            }
+            
+            document.getElementById('status').value = selectedStatus;
+            validateForm();
+        }
+        
+        // Keep selectStatus for edit mode loading
         function selectStatus(status) {
             selectedStatus = status;
             document.getElementById('status').value = status;
+            const statusDisplay = document.getElementById('status-display');
             
-            document.querySelectorAll('.status-option').forEach(opt => {
-                opt.classList.remove('selected', 'pass', 'fail');
-            });
-            
-            const options = document.querySelectorAll('.status-option');
             if (status === 'Pass') {
-                options[0].classList.add('selected', 'pass');
+                statusDisplay.textContent = '✅ Pass';
+                statusDisplay.className = 'status-display pass';
                 document.getElementById('corrective-action-group').classList.remove('show');
             } else {
-                options[1].classList.add('selected', 'fail');
+                statusDisplay.textContent = '❌ Fail';
+                statusDisplay.className = 'status-display fail';
                 document.getElementById('corrective-action-group').classList.add('show');
             }
             

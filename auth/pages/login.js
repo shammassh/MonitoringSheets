@@ -1,6 +1,6 @@
 /**
  * Login Page Module
- * Handles Microsoft authentication for Food Safety Audit System
+ * Handles Microsoft authentication for Food Safety Management System
  * 
  * This is a SEPARATE, MODULAR file - can be edited independently
  */
@@ -20,7 +20,7 @@ class LoginPage {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Food Safety Audit System</title>
+    <title>Login - Food Safety Management System</title>
     <link rel="stylesheet" href="/auth/styles/login.css">
     <script>
         window.LOGIN_RETURN_URL = '${returnUrl.replace(/'/g, "\\'")}' || '';
@@ -31,7 +31,7 @@ class LoginPage {
         <div class="login-card">
             <div class="login-header">
                 <div class="logo">🏪</div>
-                <h1>Food Safety Audit System</h1>
+                <h1>Food Safety Management System</h1>
                 <p>GMRL</p>
             </div>
             
