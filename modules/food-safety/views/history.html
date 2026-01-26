@@ -746,6 +746,12 @@
                     content += `
                         <div style="background: #f9fafb; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
                             <div style="font-weight: 600; color: #1f2937; margin-bottom: 0.5rem;">${record.procedure_name}</div>
+                            ${record.item_name ? `
+                                <div class="detail-row" style="border-bottom: none; padding: 0.25rem 0;">
+                                    <span class="detail-label">Item</span>
+                                    <span class="detail-value">${record.item_name}</span>
+                                </div>
+                            ` : ''}
                             <div class="detail-row" style="border-bottom: none; padding: 0.25rem 0;">
                                 <span class="detail-label">Test Value</span>
                                 <span class="detail-value">${record.test_value || '-'} ${record.unit_of_measurement || ''}</span>

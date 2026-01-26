@@ -293,6 +293,7 @@ router.post('/api/verifications/batch', async (req, res) => {
                 .input('session_id', sql.Int, sessionId)
                 .input('reference_id', sql.Int, record.reference_id)
                 .input('procedure_name', sql.NVarChar, record.procedure_name || null)
+                .input('item_name', sql.NVarChar, record.item_name || null)
                 .input('unit_of_measurement', sql.NVarChar, record.unit_of_measurement || null)
                 .input('test_value', sql.NVarChar, record.test_value || null)
                 .input('reference_value', sql.NVarChar, record.reference_value || null)
@@ -303,8 +304,8 @@ router.post('/api/verifications/batch', async (req, res) => {
                 .input('comments', sql.NVarChar, record.comments || null)
                 .query(`
                     INSERT INTO FoodSafetyVerificationRecords 
-                    (session_id, reference_id, procedure_name, unit_of_measurement, test_value, reference_value, difference, status, corrective_action, next_due_date, comments)
-                    VALUES (@session_id, @reference_id, @procedure_name, @unit_of_measurement, @test_value, @reference_value, @difference, @status, @corrective_action, @next_due_date, @comments)
+                    (session_id, reference_id, procedure_name, item_name, unit_of_measurement, test_value, reference_value, difference, status, corrective_action, next_due_date, comments)
+                    VALUES (@session_id, @reference_id, @procedure_name, @item_name, @unit_of_measurement, @test_value, @reference_value, @difference, @status, @corrective_action, @next_due_date, @comments)
                 `);
             
             // Update next due date on reference
@@ -371,6 +372,7 @@ router.put('/api/verifications/:id', async (req, res) => {
         if (record) {
             await pool.request()
                 .input('session_id', sql.Int, req.params.id)
+                .input('item_name', sql.NVarChar, record.item_name || null)
                 .input('test_value', sql.NVarChar, record.test_value || null)
                 .input('reference_value', sql.NVarChar, record.reference_value || null)
                 .input('difference', sql.NVarChar, record.difference || null)
@@ -379,7 +381,7 @@ router.put('/api/verifications/:id', async (req, res) => {
                 .input('comments', sql.NVarChar, record.comments || null)
                 .query(`
                     UPDATE FoodSafetyVerificationRecords 
-                    SET test_value = @test_value, reference_value = @reference_value, difference = @difference,
+                    SET item_name = @item_name, test_value = @test_value, reference_value = @reference_value, difference = @difference,
                         status = @status, corrective_action = @corrective_action, comments = @comments
                     WHERE session_id = @session_id
                 `);

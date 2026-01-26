@@ -183,6 +183,28 @@
             color: #374151;
         }
         
+        .auto-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+        
+        .auto-status.pass {
+            background: #dcfce7;
+            color: #166534;
+            border: 2px solid #22c55e;
+        }
+        
+        .auto-status.fail {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 2px solid #ef4444;
+        }
+        
         .corrective-action-group {
             display: none;
             background: #fef3c7;
@@ -457,14 +479,19 @@
                         </div>
                     </div>
                     
+                    <div class="form-group">
+                        <label for="item-name">Item Name / Number</label>
+                        <input type="text" id="item-name" placeholder="e.g., Fridge 1, Truck #123, Chicken breast">
+                    </div>
+                    
                     <div class="form-row-3">
                         <div class="form-group">
                             <label for="unit-of-measurement">Unit of Measurement</label>
                             <input type="text" id="unit-of-measurement" readonly>
                         </div>
                         <div class="form-group">
-                            <label for="reference-value">Reference Value</label>
-                            <input type="text" id="reference-value" readonly>
+                            <label for="reference-value">Reference Value <span id="ref-manual-hint" style="display: none; font-size: 0.75rem; color: #f59e0b;">(manual entry)</span></label>
+                            <input type="text" id="reference-value" placeholder="Enter reference value" oninput="calculateDifference()">
                         </div>
                         <div class="form-group">
                             <label for="accept-error">Acceptable Error</label>
@@ -485,18 +512,13 @@
                     </div>
                     
                     <div class="form-group">
-                        <label>Status <span class="required">*</span></label>
-                        <div class="status-selector">
-                            <div class="status-option" onclick="selectStatus('Pass')">
-                                <div class="icon">✅</div>
-                                <div class="label">Pass</div>
-                            </div>
-                            <div class="status-option" onclick="selectStatus('Fail')">
-                                <div class="icon">❌</div>
-                                <div class="label">Fail</div>
-                            </div>
+                        <label>Status</label>
+                        <div id="auto-status-display" class="auto-status" style="display: none;">
+                            <span id="auto-status-icon"></span>
+                            <span id="auto-status-text"></span>
                         </div>
-                        <input type="hidden" id="status" required>
+                        <div id="status-pending" style="color: #6b7280; font-style: italic;">Enter test value to calculate status</div>
+                        <input type="hidden" id="status">
                     </div>
                     
                     <div class="corrective-action-group" id="corrective-action-group">
@@ -669,12 +691,13 @@
                 setTimeout(() => {
                     const verDate = new Date(editData.session.verification_date);
                     document.getElementById('log-date').value = verDate.toISOString().split('T')[0];
+                    document.getElementById('item-name').value = record.item_name || '';
                     document.getElementById('test-value').value = record.test_value || '';
-                    document.getElementById('difference').value = record.difference || '';
                     document.getElementById('comments').value = record.comments || '';
                     document.getElementById('corrective-action').value = record.corrective_action || '';
                     
-                    selectStatus(record.status);
+                    // Recalculate difference which will auto-set status
+                    calculateDifference();
                     validateForm();
                 }, 100);
             } catch (e) {
@@ -730,7 +753,20 @@
             document.getElementById('accept-error').value = selectedReference.accept_error || '';
             
             // Use reference_value field directly
-            document.getElementById('reference-value').value = selectedReference.reference_value || '';
+            const refValueInput = document.getElementById('reference-value');
+            const refManualHint = document.getElementById('ref-manual-hint');
+            
+            if (selectedReference.reference_value) {
+                refValueInput.value = selectedReference.reference_value;
+                refValueInput.readOnly = true;
+                refValueInput.style.backgroundColor = '#f3f4f6';
+                refManualHint.style.display = 'none';
+            } else {
+                refValueInput.value = '';
+                refValueInput.readOnly = false;
+                refValueInput.style.backgroundColor = '#fff';
+                refManualHint.style.display = 'inline';
+            }
             
             // Calculate next due date based on frequency
             const logDate = new Date(document.getElementById('log-date').value);
@@ -795,27 +831,63 @@
             const testNum = parseFloat(testValue);
             const refNum = parseFloat(refValue);
             
+            const statusDisplay = document.getElementById('auto-status-display');
+            const statusPending = document.getElementById('status-pending');
+            const statusIcon = document.getElementById('auto-status-icon');
+            const statusText = document.getElementById('auto-status-text');
+            const correctiveGroup = document.getElementById('corrective-action-group');
+            
             if (!isNaN(testNum) && !isNaN(refNum)) {
                 const diff = testNum - refNum;
-                const diffStr = (diff >= 0 ? '+' : '') + diff.toFixed(1);
+                const diffStr = Math.abs(diff).toFixed(1);
                 document.getElementById('difference').value = diffStr;
                 
-                // Check if within acceptable error
+                // Check if within acceptable error and auto-set status
                 const errorMatch = acceptError.match(/[±+-]?\s*(\d+\.?\d*)/);
+                const indicator = document.getElementById('diff-indicator');
+                
+                let isPass = true;
                 if (errorMatch) {
                     const errorVal = parseFloat(errorMatch[1]);
-                    const indicator = document.getElementById('diff-indicator');
-                    if (Math.abs(diff) <= errorVal) {
+                    isPass = Math.abs(diff) <= errorVal;
+                    
+                    if (isPass) {
                         indicator.textContent = '✓ Within acceptable range';
                         indicator.className = 'diff-indicator within';
                     } else {
                         indicator.textContent = '✗ Outside acceptable range';
                         indicator.className = 'diff-indicator outside';
                     }
+                } else {
+                    indicator.textContent = '';
+                }
+                
+                // Auto-set status
+                selectedStatus = isPass ? 'Pass' : 'Fail';
+                document.getElementById('status').value = selectedStatus;
+                
+                statusPending.style.display = 'none';
+                statusDisplay.style.display = 'flex';
+                statusDisplay.className = 'auto-status ' + (isPass ? 'pass' : 'fail');
+                statusIcon.textContent = isPass ? '✅' : '❌';
+                statusText.textContent = isPass ? 'Pass' : 'Fail';
+                
+                // Show/hide corrective action
+                if (isPass) {
+                    correctiveGroup.classList.remove('show');
+                } else {
+                    correctiveGroup.classList.add('show');
                 }
             } else {
                 document.getElementById('difference').value = '';
                 document.getElementById('diff-indicator').textContent = '';
+                
+                // Reset status
+                selectedStatus = null;
+                document.getElementById('status').value = '';
+                statusPending.style.display = 'block';
+                statusDisplay.style.display = 'none';
+                correctiveGroup.classList.remove('show');
             }
             
             validateForm();
@@ -844,13 +916,15 @@
         function validateForm() {
             const logDate = document.getElementById('log-date').value;
             const testValue = document.getElementById('test-value').value;
+            const refValue = document.getElementById('reference-value').value;
             const filledBy = document.getElementById('filled-by').value;
             const correctiveAction = document.getElementById('corrective-action').value;
             
             const isFailing = selectedStatus === 'Fail';
             const correctiveActionValid = !isFailing || (isFailing && correctiveAction.trim() !== '');
             
-            const isValid = selectedReference && logDate && testValue && selectedStatus && filledBy && correctiveActionValid;
+            // Status is auto-calculated, so just need test value and reference value
+            const isValid = selectedReference && logDate && testValue && refValue && selectedStatus && filledBy && correctiveActionValid;
             document.getElementById('submit-btn').disabled = !isValid;
         }
         
@@ -875,6 +949,7 @@
                     const updateData = {
                         verification_date: document.getElementById('log-date').value,
                         record: {
+                            item_name: document.getElementById('item-name').value,
                             test_value: document.getElementById('test-value').value,
                             reference_value: document.getElementById('reference-value').value,
                             difference: document.getElementById('difference').value,
@@ -912,6 +987,7 @@
                             reference_id: selectedReference.id,
                             procedure_name: selectedReference.name,
                             unit_of_measurement: document.getElementById('unit-of-measurement').value,
+                            item_name: document.getElementById('item-name').value,
                             test_value: document.getElementById('test-value').value,
                             reference_value: document.getElementById('reference-value').value,
                             difference: document.getElementById('difference').value,
