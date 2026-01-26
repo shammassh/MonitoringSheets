@@ -330,7 +330,9 @@
 
                     <div class="form-group">
                         <label for="branch">Branch <span class="required">*</span></label>
-                        <input type="text" id="branch" placeholder="Enter branch/location" required>
+                        <select id="branch" required>
+                            <option value="">Select Branch</option>
+                        </select>
                     </div>
 
                     <div class="form-group">
@@ -342,9 +344,7 @@
 
                     <div class="form-group">
                         <label for="equipment">Equipment/Packaging <span class="required">*</span></label>
-                        <select id="equipment" required>
-                            <option value="">Select Equipment/Packaging</option>
-                        </select>
+                        <input type="text" id="equipment" placeholder="Enter equipment or packaging name" required>
                     </div>
 
                     <div class="form-group full-width">
@@ -395,8 +395,8 @@
         document.addEventListener('DOMContentLoaded', async () => {
             await Promise.all([
                 loadSettings(),
+                loadBranches(),
                 loadSections(),
-                loadEquipment(),
                 loadCurrentUser()
             ]);
             
@@ -413,7 +413,7 @@
 
         async function loadSettings() {
             try {
-                const response = await fetch('/atp-monitoring/api/settings');
+                const response = await fetch('/atp-monitoring/api/settings?_=' + Date.now(), { cache: 'no-store' });
                 const settings = await response.json();
                 
                 if (settings.acceptable_max) {
@@ -425,9 +425,26 @@
             }
         }
 
+        async function loadBranches() {
+            try {
+                const response = await fetch('/atp-monitoring/api/branches?_=' + Date.now(), { cache: 'no-store' });
+                const branches = await response.json();
+                
+                const select = document.getElementById('branch');
+                branches.forEach(branch => {
+                    const option = document.createElement('option');
+                    option.value = branch.name;
+                    option.textContent = branch.name;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading branches:', error);
+            }
+        }
+
         async function loadSections() {
             try {
-                const response = await fetch('/atp-monitoring/api/sections');
+                const response = await fetch('/atp-monitoring/api/sections?_=' + Date.now(), { cache: 'no-store' });
                 const sections = await response.json();
                 
                 const select = document.getElementById('section');
@@ -439,23 +456,6 @@
                 });
             } catch (error) {
                 console.error('Error loading sections:', error);
-            }
-        }
-
-        async function loadEquipment() {
-            try {
-                const response = await fetch('/atp-monitoring/api/equipment');
-                const equipment = await response.json();
-                
-                const select = document.getElementById('equipment');
-                equipment.forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.name;
-                    option.textContent = item.name;
-                    select.appendChild(option);
-                });
-            } catch (error) {
-                console.error('Error loading equipment:', error);
             }
         }
 

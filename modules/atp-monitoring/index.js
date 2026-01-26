@@ -14,6 +14,15 @@ const dbConfig = {
     }
 };
 
+// Disable caching for all API routes
+router.use('/api', (req, res, next) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    res.set('Surrogate-Control', 'no-store');
+    next();
+});
+
 // Serve static pages
 router.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'index.html'));
@@ -70,6 +79,48 @@ router.put('/api/settings', async (req, res) => {
     } catch (err) {
         console.error('Error updating settings:', err);
         res.status(500).json({ error: 'Failed to update settings' });
+    }
+});
+
+// API: Get branches
+router.get('/api/branches', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .query('SELECT * FROM ATPBranches WHERE is_active = 1 ORDER BY name');
+        res.json(result.recordset);
+    } catch (err) {
+        console.error('Error fetching branches:', err);
+        res.status(500).json({ error: 'Failed to fetch branches' });
+    }
+});
+
+// API: Create branch
+router.post('/api/branches', async (req, res) => {
+    try {
+        const { name } = req.body;
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('name', sql.NVarChar, name)
+            .query('INSERT INTO ATPBranches (name) OUTPUT INSERTED.* VALUES (@name)');
+        res.status(201).json(result.recordset[0]);
+    } catch (err) {
+        console.error('Error creating branch:', err);
+        res.status(500).json({ error: 'Failed to create branch' });
+    }
+});
+
+// API: Delete branch
+router.delete('/api/branches/:id', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('id', sql.Int, req.params.id)
+            .query('UPDATE ATPBranches SET is_active = 0 WHERE id = @id');
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Error deleting branch:', err);
+        res.status(500).json({ error: 'Failed to delete branch' });
     }
 });
 
