@@ -300,6 +300,31 @@
                 grid-template-columns: 1fr;
             }
         }
+        
+        /* Shifts Preview */
+        .shifts-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+        
+        .shift-tag {
+            background: #ecfdf5;
+            color: #059669;
+            padding: 0.375rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+        }
+        
+        .shift-tag svg {
+            width: 14px;
+            height: 14px;
+        }
     </style>
 </head>
 <body>
@@ -360,7 +385,7 @@
                 
                 <div class="form-group">
                     <label for="document_prefix">Document Number Prefix</label>
-                    <input type="text" id="document_prefix" placeholder="HYG" maxlength="10">
+                    <input type="text" id="document_prefix" placeholder="HYG" maxlength="20">
                     <div class="hint">The prefix used for document numbers (e.g., HYG-20260115-001)</div>
                 </div>
                 
@@ -388,6 +413,30 @@
             </div>
         </div>
         
+        <!-- Shifts Settings -->
+        <div class="settings-card">
+            <div class="card-header">
+                <div class="card-header-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                </div>
+                <div>
+                    <h2>Shift Configuration</h2>
+                    <p>Define available work shifts for the checklist</p>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="form-group">
+                    <label for="shifts">Available Shifts</label>
+                    <input type="text" id="shifts" placeholder="Morning, Afternoon, Night">
+                    <div class="hint">Enter shift names separated by commas (e.g., Morning, Afternoon, Night)</div>
+                </div>
+                <div class="shifts-preview" id="shifts-preview"></div>
+            </div>
+        </div>
+        
         <!-- Actions -->
         <div class="actions-bar">
             <button class="btn btn-secondary" onclick="loadSettings()">
@@ -411,7 +460,7 @@
     <div id="notifications"></div>
     
     <script>
-        const fields = ['document_title', 'document_prefix', 'creation_date', 'last_revision_date', 'edition', 'company_name'];
+        const fields = ['document_title', 'document_prefix', 'creation_date', 'last_revision_date', 'edition', 'company_name', 'shifts'];
         
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
@@ -421,6 +470,9 @@
             fields.forEach(field => {
                 document.getElementById(field).addEventListener('input', updatePreview);
             });
+            
+            // Add shifts preview listener
+            document.getElementById('shifts').addEventListener('input', updateShiftsPreview);
         });
         
         async function loadSettings() {
@@ -437,6 +489,7 @@
                 });
                 
                 updatePreview();
+                updateShiftsPreview();
             } catch (e) {
                 console.error('Failed to load settings:', e);
                 showNotification('Failed to load settings', 'error');
@@ -460,6 +513,33 @@
             document.getElementById('preview-creation').textContent = creation ? formatDate(creation) : '-';
             document.getElementById('preview-revision').textContent = revision ? formatDate(revision) : '-';
             document.getElementById('preview-edition').textContent = edition;
+        }
+        
+        function updateShiftsPreview() {
+            const shiftsInput = document.getElementById('shifts').value;
+            const preview = document.getElementById('shifts-preview');
+            
+            if (!shiftsInput.trim()) {
+                preview.innerHTML = '<span style="color: #6b7280; font-size: 0.8rem;">Using default shifts: Morning, Afternoon, Night</span>';
+                return;
+            }
+            
+            const shifts = shiftsInput.split(',').map(s => s.trim()).filter(s => s);
+            
+            if (shifts.length === 0) {
+                preview.innerHTML = '<span style="color: #6b7280; font-size: 0.8rem;">Using default shifts: Morning, Afternoon, Night</span>';
+                return;
+            }
+            
+            preview.innerHTML = shifts.map(shift => `
+                <span class="shift-tag">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    ${shift}
+                </span>
+            `).join('');
         }
         
         function formatDate(dateStr) {

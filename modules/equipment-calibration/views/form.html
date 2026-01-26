@@ -469,20 +469,26 @@
                             <input type="text" id="device-name" class="auto-filled" readonly>
                         </div>
                         <div class="form-group">
-                            <label for="log-date">Log Date <span class="required">*</span></label>
-                            <input type="date" id="log-date" required>
+                            <label for="item-name">Item Name <span class="required">*</span></label>
+                            <input type="text" id="item-name" required placeholder="e.g., Kitchen Thermometer #1">
                         </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="method-used">Method Used</label>
-                        <input type="text" id="method-used" class="auto-filled" readonly>
                     </div>
                     
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="reference-value">Reference Value</label>
-                            <input type="text" id="reference-value" class="auto-filled" readonly>
+                            <label for="log-date">Log Date <span class="required">*</span></label>
+                            <input type="date" id="log-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="method-used">Method Used</label>
+                            <input type="text" id="method-used" class="auto-filled" readonly>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="reference-value">Reference Value <span class="required" id="ref-value-required" style="display:none;">*</span></label>
+                            <input type="text" id="reference-value" class="auto-filled" readonly oninput="calculateDifference(); validateForm();">
                         </div>
                         <div class="form-group">
                             <label for="unit-measurement">Unit of Measurement <span class="required">*</span></label>
@@ -696,6 +702,7 @@
                 setTimeout(() => {
                     const calDate = new Date(editData.session.calibration_date);
                     document.getElementById('log-date').value = calDate.toISOString().split('T')[0];
+                    document.getElementById('item-name').value = record.item_name || '';
                     document.getElementById('tested-value').value = record.measured_value || '';
                     document.getElementById('remarks').value = record.remarks || '';
                     document.getElementById('corrective-action').value = record.corrective_action || '';
@@ -755,7 +762,28 @@
             // Fill auto-populated fields
             document.getElementById('device-name').value = selectedReference.name;
             document.getElementById('method-used').value = selectedReference.method_used || '';
-            document.getElementById('reference-value').value = selectedReference.reference_value || '';
+            
+            // Check if equipment is probe thermometer or hygrometer (user must enter reference value)
+            const refValueInput = document.getElementById('reference-value');
+            const refValueRequired = document.getElementById('ref-value-required');
+            const equipmentName = selectedReference.name.toLowerCase();
+            const requiresManualEntry = equipmentName.includes('thermometer') || equipmentName.includes('hygrometer');
+            
+            if (requiresManualEntry) {
+                // Probe thermometer/hygrometer: user must enter reference value manually
+                refValueInput.value = '';
+                refValueInput.readOnly = false;
+                refValueInput.classList.remove('auto-filled');
+                refValueInput.placeholder = 'Enter reference value...';
+                refValueRequired.style.display = 'inline';
+            } else {
+                // Other equipment: auto-fill from calibration reference
+                refValueInput.value = selectedReference.reference_value || '';
+                refValueInput.readOnly = true;
+                refValueInput.classList.add('auto-filled');
+                refValueInput.placeholder = '';
+                refValueRequired.style.display = 'none';
+            }
             
             // Calculate next due date based on frequency
             const logDate = new Date(document.getElementById('log-date').value);
@@ -775,6 +803,7 @@
             document.getElementById('submit-bar').style.display = 'flex';
             
             // Reset calculated fields
+            document.getElementById('item-name').value = '';
             document.getElementById('tested-value').value = '';
             document.getElementById('difference-display').textContent = '--';
             document.getElementById('difference-display').className = 'difference-display neutral';
@@ -850,8 +879,10 @@
         
         function validateForm() {
             const logDate = document.getElementById('log-date').value;
+            const itemName = document.getElementById('item-name').value;
             const unit = document.getElementById('unit-measurement').value;
             const testedValue = document.getElementById('tested-value').value;
+            const referenceValue = document.getElementById('reference-value').value;
             const filledBy = document.getElementById('filled-by').value;
             const correctiveAction = document.getElementById('corrective-action').value;
             
@@ -859,7 +890,11 @@
             const isFailing = document.getElementById('corrective-action-group').classList.contains('show');
             const correctiveActionValid = !isFailing || (isFailing && correctiveAction.trim() !== '');
             
-            const isValid = selectedReference && logDate && unit && testedValue && filledBy && correctiveActionValid;
+            // Check if reference value is required (for probe thermometer/hygrometer)
+            const refValueInput = document.getElementById('reference-value');
+            const referenceValueValid = refValueInput.readOnly || (!refValueInput.readOnly && referenceValue.trim() !== '');
+            
+            const isValid = selectedReference && logDate && itemName && unit && testedValue && filledBy && correctiveActionValid && referenceValueValid;
             document.getElementById('submit-btn').disabled = !isValid;
         }
         
@@ -874,6 +909,7 @@
         });
         
         document.getElementById('unit-measurement').addEventListener('change', validateForm);
+        document.getElementById('item-name').addEventListener('input', validateForm);
         document.getElementById('filled-by').addEventListener('input', validateForm);
         document.getElementById('corrective-action').addEventListener('input', validateForm);
         
@@ -933,6 +969,7 @@
                         shift: 'N/A',
                         records: [{
                             reference_id: selectedReference.id,
+                            item_name: document.getElementById('item-name').value,
                             measured_value: testedValue,
                             deviation: difference,
                             status: status,

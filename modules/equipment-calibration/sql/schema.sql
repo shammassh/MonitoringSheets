@@ -22,6 +22,7 @@ CREATE TABLE CalibrationRecords (
     id INT IDENTITY(1,1) PRIMARY KEY,
     session_id INT NOT NULL,
     reference_id INT NOT NULL FOREIGN KEY REFERENCES CalibrationReferences(id),
+    item_name NVARCHAR(200),
     measured_value NVARCHAR(100),
     deviation NVARCHAR(100),
     status NVARCHAR(20) DEFAULT 'Pass', -- 'Pass', 'Fail', 'N/A'
@@ -73,5 +74,9 @@ INSERT INTO CalibrationSettings (setting_key, setting_value) VALUES ('revision_d
 
 IF NOT EXISTS (SELECT 1 FROM CalibrationSettings WHERE setting_key = 'edition')
 INSERT INTO CalibrationSettings (setting_key, setting_value) VALUES ('edition', '1');
+
+-- Add item_name column if it doesn't exist (migration for existing tables)
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('CalibrationRecords') AND name = 'item_name')
+ALTER TABLE CalibrationRecords ADD item_name NVARCHAR(200);
 
 PRINT 'Equipment Calibration tables created successfully';

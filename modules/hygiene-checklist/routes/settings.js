@@ -77,16 +77,22 @@ router.put('/', requireAuth, requireRole('SuperAuditor', 'Admin'), async (req, r
         
         try {
             for (const [key, value] of Object.entries(settings)) {
+                // Use MERGE to insert or update
                 await transaction.request()
                     .input('key', sql.NVarChar, key)
                     .input('value', sql.NVarChar, value)
                     .input('updated_by', sql.Int, req.currentUser.id)
                     .query(`
-                        UPDATE HygieneSettings 
-                        SET setting_value = @value, 
-                            updated_by = @updated_by,
-                            updated_at = GETDATE()
-                        WHERE setting_key = @key
+                        MERGE HygieneSettings AS target
+                        USING (SELECT @key AS setting_key) AS source
+                        ON target.setting_key = source.setting_key
+                        WHEN MATCHED THEN
+                            UPDATE SET setting_value = @value, 
+                                       updated_by = @updated_by,
+                                       updated_at = GETDATE()
+                        WHEN NOT MATCHED THEN
+                            INSERT (setting_key, setting_value, updated_by)
+                            VALUES (@key, @value, @updated_by);
                     `);
             }
             

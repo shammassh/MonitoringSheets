@@ -462,6 +462,35 @@
             color: white;
         }
         
+        .btn-save {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .btn-save:hover {
+            background: #2563eb;
+        }
+        
+        .btn-save:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        
+        .draft-indicator {
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            color: #3b82f6;
+            background: #eff6ff;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+        }
+        
+        .draft-indicator.show {
+            display: flex;
+        }
+        
         /* Fixed Bottom Bar */
         .bottom-bar {
             position: fixed;
@@ -710,9 +739,7 @@
                     <label for="shift">Shift</label>
                     <select id="shift" required>
                         <option value="">Select shift...</option>
-                        <option value="Morning">Morning (6 AM - 2 PM)</option>
-                        <option value="Afternoon">Afternoon (2 PM - 10 PM)</option>
-                        <option value="Night">Night (10 PM - 6 AM)</option>
+                        <!-- Shifts loaded dynamically from settings -->
                     </select>
                 </div>
                 <div class="form-group">
@@ -781,7 +808,21 @@
                 </div>
             </div>
             <div style="display: flex; align-items: center; gap: 1rem;">
+                <span id="draft-indicator" class="draft-indicator">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                    </svg>
+                    <span id="draft-status">Draft saved</span>
+                </span>
                 <span id="validation-msg" class="validation-msg"></span>
+                <button class="btn btn-save" id="save-draft-btn" onclick="saveDraft()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                        <polyline points="17 21 17 13 7 13 7 21"/>
+                        <polyline points="7 3 7 8 15 8"/>
+                    </svg>
+                    Save Draft
+                </button>
                 <button class="btn btn-primary" id="submit-btn" onclick="submitAll()" disabled>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
@@ -848,7 +889,20 @@
         
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
-            document.getElementById('check-date').valueAsDate = new Date();
+            // Check for URL parameters (from history page draft continuation)
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlDate = urlParams.get('date');
+            const urlShift = urlParams.get('shift');
+            
+            if (urlDate) {
+                document.getElementById('check-date').value = urlDate;
+            } else {
+                document.getElementById('check-date').valueAsDate = new Date();
+            }
+            
+            if (urlShift) {
+                document.getElementById('shift').value = urlShift;
+            }
             
             // Initialize offline database
             await initOfflineDB();
@@ -859,6 +913,11 @@
             updateOnlineStatus();
             
             await loadData();
+            
+            // If we have both date and shift from URL, check for draft after data loads
+            if (urlDate && urlShift) {
+                setTimeout(() => checkForDraft(), 100);
+            }
             
             // Register service worker
             if ('serviceWorker' in navigator) {
@@ -916,16 +975,53 @@
             showNotification('You are offline. Data will be saved locally.', 'warning');
         }
         
+        function loadShifts(shiftsString) {
+            const shiftSelect = document.getElementById('shift');
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlShift = urlParams.get('shift');
+            
+            // Clear existing options except the first one
+            while (shiftSelect.options.length > 1) {
+                shiftSelect.remove(1);
+            }
+            
+            // Parse shifts from settings or use defaults
+            let shifts;
+            if (shiftsString && shiftsString.trim()) {
+                shifts = shiftsString.split(',').map(s => s.trim()).filter(s => s);
+            } else {
+                shifts = ['Morning', 'Afternoon', 'Night'];
+            }
+            
+            // Add shift options
+            shifts.forEach(shift => {
+                const option = document.createElement('option');
+                option.value = shift;
+                option.textContent = shift;
+                shiftSelect.appendChild(option);
+            });
+            
+            // Set shift from URL if provided
+            if (urlShift && shifts.includes(urlShift)) {
+                shiftSelect.value = urlShift;
+            }
+        }
+        
         async function loadData() {
             try {
                 if (navigator.onLine) {
-                    const [empRes, itemRes] = await Promise.all([
+                    const [empRes, itemRes, settingsRes] = await Promise.all([
                         fetch('/hygiene-checklist/api/employees'),
-                        fetch('/hygiene-checklist/api/checklist-items')
+                        fetch('/hygiene-checklist/api/checklist-items'),
+                        fetch('/hygiene-checklist/api/settings')
                     ]);
                     
                     employees = await empRes.json();
                     checklistItems = await itemRes.json();
+                    const settings = await settingsRes.json();
+                    
+                    // Load shifts from settings
+                    loadShifts(settings.shifts);
                     
                     // Cache data for offline use
                     await cacheDataOffline(employees, checklistItems);
@@ -933,6 +1029,9 @@
                     // Load from offline cache
                     employees = await getFromOfflineDB('employees');
                     checklistItems = await getFromOfflineDB('checklistItems');
+                    
+                    // Use default shifts when offline
+                    loadShifts(null);
                 }
                 
                 initializeChecklistData();
@@ -947,6 +1046,7 @@
                 try {
                     employees = await getFromOfflineDB('employees');
                     checklistItems = await getFromOfflineDB('checklistItems');
+                    loadShifts(null);
                     initializeChecklistData();
                     renderTable();
                     updateStats();
@@ -1544,9 +1644,127 @@
             }, 3000);
         }
         
+        // ==========================================
+        // Save Draft Functions
+        // ==========================================
+        
+        function getDraftKey() {
+            const date = document.getElementById('check-date').value;
+            const shift = document.getElementById('shift').value;
+            return `hygiene-draft-${date}-${shift}`;
+        }
+        
+        function saveDraft() {
+            const date = document.getElementById('check-date').value;
+            const shift = document.getElementById('shift').value;
+            
+            if (!date) {
+                showNotification('Please select a date first', 'error');
+                return;
+            }
+            
+            const draftData = {
+                date: date,
+                shift: shift,
+                checklistData: checklistData,
+                savedAt: new Date().toISOString()
+            };
+            
+            try {
+                localStorage.setItem(getDraftKey(), JSON.stringify(draftData));
+                
+                // Show draft saved indicator
+                const indicator = document.getElementById('draft-indicator');
+                const status = document.getElementById('draft-status');
+                const time = new Date().toLocaleTimeString();
+                status.textContent = `Draft saved at ${time}`;
+                indicator.classList.add('show');
+                
+                showNotification('Draft saved successfully!', 'success');
+            } catch (e) {
+                console.error('Error saving draft:', e);
+                showNotification('Failed to save draft', 'error');
+            }
+        }
+        
+        function loadDraft() {
+            const draftKey = getDraftKey();
+            const savedDraft = localStorage.getItem(draftKey);
+            
+            if (!savedDraft) {
+                return false;
+            }
+            
+            try {
+                const draftData = JSON.parse(savedDraft);
+                
+                // Check if draft is from today or still relevant
+                const savedDate = new Date(draftData.savedAt);
+                const now = new Date();
+                const hoursSincesSave = (now - savedDate) / (1000 * 60 * 60);
+                
+                // If draft is older than 24 hours, don't load it
+                if (hoursSincesSave > 24) {
+                    localStorage.removeItem(draftKey);
+                    return false;
+                }
+                
+                // Ask user if they want to load the draft
+                const savedTime = savedDate.toLocaleString();
+                if (confirm(`A saved draft from ${savedTime} was found. Do you want to continue from where you left off?`)) {
+                    checklistData = draftData.checklistData;
+                    renderTable();
+                    updateStats();
+                    
+                    // Show draft indicator
+                    const indicator = document.getElementById('draft-indicator');
+                    const status = document.getElementById('draft-status');
+                    status.textContent = `Draft loaded from ${savedDate.toLocaleTimeString()}`;
+                    indicator.classList.add('show');
+                    
+                    showNotification('Draft loaded successfully!', 'success');
+                    return true;
+                }
+            } catch (e) {
+                console.error('Error loading draft:', e);
+                localStorage.removeItem(draftKey);
+            }
+            
+            return false;
+        }
+        
+        function clearDraft() {
+            const draftKey = getDraftKey();
+            localStorage.removeItem(draftKey);
+            document.getElementById('draft-indicator').classList.remove('show');
+        }
+        
+        // Check for existing draft when date/shift changes
+        function checkForDraft() {
+            const date = document.getElementById('check-date').value;
+            const shift = document.getElementById('shift').value;
+            
+            if (date && shift) {
+                loadDraft();
+            }
+        }
+        
+        // Clear draft on successful submit
+        const originalResetAndReload = resetAndReload;
+        resetAndReload = function() {
+            clearDraft();
+            originalResetAndReload();
+        };
+        
         // Update form validation on control changes
-        document.getElementById('shift').addEventListener('change', validateForm);
-        document.getElementById('check-date').addEventListener('change', validateForm);
+        document.getElementById('shift').addEventListener('change', () => {
+            validateForm();
+            checkForDraft();
+        });
+        document.getElementById('check-date').addEventListener('change', () => {
+            validateForm();
+            checkForDraft();
+        });
     </script>
 </body>
 </html>
