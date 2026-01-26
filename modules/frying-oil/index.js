@@ -337,6 +337,7 @@ router.get('/api/tests', async (req, res) => {
         const result = await pool.request().query(`
             SELECT s.*,
                 (SELECT COUNT(*) FROM OilTestRecords WHERE session_id = s.id AND status = 'Pass') as pass_count,
+                (SELECT COUNT(*) FROM OilTestRecords WHERE session_id = s.id AND status = 'Warning') as warning_count,
                 (SELECT COUNT(*) FROM OilTestRecords WHERE session_id = s.id AND status = 'Fail') as fail_count,
                 (SELECT COUNT(*) FROM OilTestRecords WHERE session_id = s.id) as total_count,
                 (SELECT TOP 1 ref.name FROM OilTestRecords r 

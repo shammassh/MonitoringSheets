@@ -203,6 +203,11 @@
             color: #065f46;
         }
         
+        .summary-item.warning {
+            background: #fef3c7;
+            color: #b45309;
+        }
+        
         .summary-item.fail {
             background: #fee2e2;
             color: #991b1b;
@@ -387,6 +392,11 @@
         .status-badge.pass {
             background: #d1fae5;
             color: #065f46;
+        }
+        
+        .status-badge.warning {
+            background: #fef3c7;
+            color: #b45309;
         }
         
         .status-badge.fail {
@@ -619,11 +629,13 @@
         function renderStats() {
             const total = tests.length;
             let passCount = 0;
+            let warningCount = 0;
             let failCount = 0;
             let pendingCount = 0;
             
             tests.forEach(t => {
-                if (t.has_failures) failCount++;
+                if (t.fail_count > 0) failCount++;
+                else if (t.warning_count > 0) warningCount++;
                 else passCount++;
                 
                 if (!t.verified) pendingCount++;
@@ -656,8 +668,8 @@
                     day: 'numeric'
                 });
                 
-                const statusClass = test.has_failures ? 'fail' : 'pass';
-                const statusText = test.has_failures ? 'Has Failures' : 'All Passed';
+                const statusClass = test.fail_count > 0 ? 'fail' : (test.warning_count > 0 ? 'warning' : 'pass');
+                const statusText = test.fail_count > 0 ? '🔴 Has Failures' : (test.warning_count > 0 ? '🟠 Has Warnings' : '🟢 All Passed');
                 
                 const editBtn = canEdit() && test.verified ? `
                     <button class="btn btn-edit" onclick="editTest(${test.id})">
@@ -756,7 +768,7 @@
                             </div>
                             <div class="detail-row" style="border-bottom: none; padding: 0.25rem 0;">
                                 <span class="detail-label">Status</span>
-                                <span class="status-badge ${record.status === 'Pass' ? 'pass' : 'fail'}">${record.status}</span>
+                                <span class="status-badge ${record.status === 'Pass' ? 'pass' : (record.status === 'Warning' ? 'warning' : 'fail')}">${record.status === 'Pass' ? '🟢' : (record.status === 'Warning' ? '🟠' : '🔴')} ${record.status}</span>
                             </div>
                             ${record.remarks ? `
                                 <div class="detail-row" style="border-bottom: none; padding: 0.25rem 0;">

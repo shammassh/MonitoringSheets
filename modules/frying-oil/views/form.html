@@ -191,6 +191,11 @@
             color: #166534;
         }
         
+        .status-display.warning {
+            background: #fef3c7;
+            color: #b45309;
+        }
+        
         .status-display.fail {
             background: #fee2e2;
             color: #dc2626;
@@ -474,7 +479,7 @@
                             <input type="hidden" id="status">
                         </div>
                     </div>
-                    <div class="threshold-hint">Pass: ≤24% TPC | Fail: >24% TPC (Oil should be replaced)</div>
+                    <div class="threshold-hint">🟢 Pass: ≤20% TPC | 🟠 Warning: 20-24% TPC | 🔴 Fail: >24% TPC (Oil should be replaced)</div>
                     
                     <div class="corrective-action-group" id="corrective-action-group">
                         <div class="form-group" style="margin-bottom: 0;">
@@ -758,7 +763,8 @@
             const testedValue = parseFloat(document.getElementById('tested-value').value);
             const statusDisplay = document.getElementById('status-display');
             const correctiveActionGroup = document.getElementById('corrective-action-group');
-            const TPC_THRESHOLD = 24; // Maximum acceptable TPC percentage
+            const TPC_GOOD = 20;     // Green: ≤20%
+            const TPC_WARNING = 24;  // Orange: 20-24%, Red: >24%
             
             if (isNaN(testedValue)) {
                 statusDisplay.textContent = '--';
@@ -770,14 +776,19 @@
                 return;
             }
             
-            if (testedValue <= TPC_THRESHOLD) {
+            if (testedValue <= TPC_GOOD) {
                 selectedStatus = 'Pass';
-                statusDisplay.textContent = '✅ Pass';
+                statusDisplay.textContent = '🟢 Pass';
                 statusDisplay.className = 'status-display pass';
+                correctiveActionGroup.classList.remove('show');
+            } else if (testedValue <= TPC_WARNING) {
+                selectedStatus = 'Warning';
+                statusDisplay.textContent = '🟠 Warning';
+                statusDisplay.className = 'status-display warning';
                 correctiveActionGroup.classList.remove('show');
             } else {
                 selectedStatus = 'Fail';
-                statusDisplay.textContent = '❌ Fail';
+                statusDisplay.textContent = '🔴 Fail';
                 statusDisplay.className = 'status-display fail';
                 correctiveActionGroup.classList.add('show');
             }
@@ -793,11 +804,15 @@
             const statusDisplay = document.getElementById('status-display');
             
             if (status === 'Pass') {
-                statusDisplay.textContent = '✅ Pass';
+                statusDisplay.textContent = '🟢 Pass';
                 statusDisplay.className = 'status-display pass';
                 document.getElementById('corrective-action-group').classList.remove('show');
+            } else if (status === 'Warning') {
+                statusDisplay.textContent = '🟠 Warning';
+                statusDisplay.className = 'status-display warning';
+                document.getElementById('corrective-action-group').classList.remove('show');
             } else {
-                statusDisplay.textContent = '❌ Fail';
+                statusDisplay.textContent = '🔴 Fail';
                 statusDisplay.className = 'status-display fail';
                 document.getElementById('corrective-action-group').classList.add('show');
             }
