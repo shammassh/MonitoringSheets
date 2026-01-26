@@ -20,9 +20,9 @@ const dbConfig = {
     }
 };
 
-// Time slots for 3-hour intervals
-const TIME_SLOTS = ['01am', '04am', '07am', '10am', '01pm', '04pm', '07pm', '10pm'];
-const TIME_LABELS = {
+// Default time slots (fallback if DB not available)
+const DEFAULT_TIME_SLOTS = ['01am', '04am', '07am', '10am', '01pm', '04pm', '07pm', '10pm'];
+const DEFAULT_TIME_LABELS = {
     '01am': '1:00 AM',
     '04am': '4:00 AM',
     '07am': '7:00 AM',
@@ -32,6 +32,27 @@ const TIME_LABELS = {
     '07pm': '7:00 PM',
     '10pm': '10:00 PM'
 };
+
+// Get time slots from database
+async function getTimeSlots() {
+    try {
+        const pool = await getPool();
+        const result = await pool.request()
+            .query('SELECT * FROM FridgeTempTimeSlots WHERE is_active = 1 ORDER BY display_order');
+        
+        if (result.recordset.length > 0) {
+            const slots = result.recordset.map(r => r.slot_key);
+            const labels = {};
+            result.recordset.forEach(r => {
+                labels[r.slot_key] = r.slot_label;
+            });
+            return { slots, labels };
+        }
+    } catch (err) {
+        console.error('Error loading time slots:', err);
+    }
+    return { slots: DEFAULT_TIME_SLOTS, labels: DEFAULT_TIME_LABELS };
+}
 
 // Get database connection
 async function getPool() {
@@ -60,11 +81,12 @@ function parseTemp(value) {
     return num;
 }
 
-// Disable caching for API responses
-router.use('/api', (req, res, next) => {
+// Disable caching for all responses
+router.use((req, res, next) => {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
+    res.set('Surrogate-Control', 'no-store');
     next();
 });
 
@@ -98,9 +120,58 @@ router.get('/api/current-user', (req, res) => {
     }
 });
 
-// API: Get time slots info
-router.get('/api/time-slots', (req, res) => {
-    res.json({ slots: TIME_SLOTS, labels: TIME_LABELS });
+// API: Get time slots info (from database)
+router.get('/api/time-slots', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const result = await pool.request()
+            .query('SELECT * FROM FridgeTempTimeSlots WHERE is_active = 1 ORDER BY display_order');
+        
+        const slots = result.recordset.map(r => r.slot_key);
+        const labels = {};
+        result.recordset.forEach(r => {
+            labels[r.slot_key] = r.slot_label;
+        });
+        
+        res.json({ slots, labels, records: result.recordset });
+    } catch (err) {
+        console.error('Error fetching time slots:', err);
+        res.json({ slots: DEFAULT_TIME_SLOTS, labels: DEFAULT_TIME_LABELS, records: [] });
+    }
+});
+
+// API: Update time slot label
+router.put('/api/time-slots/:id', async (req, res) => {
+    try {
+        const { slot_label } = req.body;
+        const pool = await getPool();
+        
+        await pool.request()
+            .input('id', sql.Int, req.params.id)
+            .input('slot_label', sql.NVarChar, slot_label)
+            .query('UPDATE FridgeTempTimeSlots SET slot_label = @slot_label, updated_at = GETDATE() WHERE id = @id');
+        
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Error updating time slot:', err);
+        res.status(500).json({ error: 'Failed to update time slot' });
+    }
+});
+
+// API: Toggle time slot active status
+router.put('/api/time-slots/:id/toggle', async (req, res) => {
+    try {
+        const pool = await getPool();
+        
+        await pool.request()
+            .input('id', sql.Int, req.params.id)
+            .query('UPDATE FridgeTempTimeSlots SET is_active = CASE WHEN is_active = 1 THEN 0 ELSE 1 END, updated_at = GETDATE() WHERE id = @id');
+        
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Error toggling time slot:', err);
+        res.status(500).json({ error: 'Failed to toggle time slot' });
+    }
 });
 
 // ==========================================

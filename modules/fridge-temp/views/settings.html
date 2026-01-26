@@ -385,6 +385,38 @@
                 </table>
             </div>
         </div>
+
+        <!-- Time Slots Configuration -->
+        <div class="card">
+            <h2>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                </svg>
+                Time Slots Configuration
+            </h2>
+            <p style="color: #6b7280; margin-bottom: 1rem; font-size: 0.875rem;">
+                Configure the time slots for temperature recording. You can edit labels and enable/disable time slots.
+            </p>
+            <div id="time-slots-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Order</th>
+                            <th>Slot Key</th>
+                            <th>Display Label</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="time-slots-list">
+                        <tr>
+                            <td colspan="5" class="empty-state">Loading time slots...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <!-- Edit Modal -->
@@ -419,12 +451,35 @@
         </div>
     </div>
 
+    <!-- Edit Time Slot Modal -->
+    <div class="modal-overlay" id="edit-slot-modal">
+        <div class="modal">
+            <h3>Edit Time Slot</h3>
+            <form id="edit-slot-form">
+                <input type="hidden" id="edit-slot-id">
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label>Slot Key (read-only)</label>
+                    <input type="text" id="edit-slot-key" readonly style="background: #f3f4f6;">
+                </div>
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label>Display Label *</label>
+                    <input type="text" id="edit-slot-label" required placeholder="e.g., 7:00 AM">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditSlotModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Toast -->
     <div class="toast" id="toast"></div>
 
     <script>
         const API_BASE = '/fridge-temp/api';
         let fridges = [];
+        let timeSlots = [];
         
         // Show toast
         function showToast(message, isError = false) {
@@ -437,7 +492,9 @@
         // Load sections for datalist
         async function loadSections() {
             try {
-                const response = await fetch(`${API_BASE}/sections`);
+                const response = await fetch(`${API_BASE}/sections?_t=${Date.now()}`, {
+                    cache: 'no-store'
+                });
                 const sections = await response.json();
                 const datalist = document.getElementById('section-list');
                 datalist.innerHTML = sections.map(s => `<option value="${s}">`).join('');
@@ -449,7 +506,9 @@
         // Load fridges
         async function loadFridges() {
             try {
-                const response = await fetch(`${API_BASE}/fridges`);
+                const response = await fetch(`${API_BASE}/fridges?_t=${Date.now()}`, {
+                    cache: 'no-store'
+                });
                 fridges = await response.json();
                 renderFridges();
             } catch (err) {
@@ -565,17 +624,19 @@
                     body: JSON.stringify(data)
                 });
                 
-                if (response.ok) {
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
                     showToast('Fridge updated successfully');
                     closeEditModal();
                     loadFridges();
                     loadSections();
                 } else {
-                    throw new Error('Failed to update fridge');
+                    throw new Error(result.error || 'Failed to update fridge');
                 }
             } catch (err) {
                 console.error('Error updating fridge:', err);
-                showToast('Failed to update fridge', true);
+                showToast(err.message || 'Failed to update fridge', true);
             }
         });
         
@@ -585,18 +646,21 @@
             
             try {
                 const response = await fetch(`${API_BASE}/fridges/${id}`, {
-                    method: 'DELETE'
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' }
                 });
                 
-                if (response.ok) {
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
                     showToast('Fridge deleted successfully');
                     loadFridges();
                 } else {
-                    throw new Error('Failed to delete fridge');
+                    throw new Error(result.error || 'Failed to delete fridge');
                 }
             } catch (err) {
                 console.error('Error deleting fridge:', err);
-                showToast('Failed to delete fridge', true);
+                showToast(err.message || 'Failed to delete fridge', true);
             }
         }
         
@@ -611,10 +675,149 @@
         document.getElementById('edit-modal').addEventListener('click', (e) => {
             if (e.target === e.currentTarget) closeEditModal();
         });
+
+        // ==========================================
+        // Time Slots Management
+        // ==========================================
+
+        // Load time slots
+        async function loadTimeSlots() {
+            try {
+                const response = await fetch(`${API_BASE}/time-slots?_t=${Date.now()}`, {
+                    cache: 'no-store'
+                });
+                const data = await response.json();
+                timeSlots = data.records || [];
+                renderTimeSlots();
+            } catch (err) {
+                console.error('Error loading time slots:', err);
+                showToast('Failed to load time slots', true);
+            }
+        }
+
+        // Render time slots table
+        function renderTimeSlots() {
+            const tbody = document.getElementById('time-slots-list');
+            
+            if (timeSlots.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No time slots configured.</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = timeSlots.map(slot => `
+                <tr style="${!slot.is_active ? 'opacity: 0.5;' : ''}">
+                    <td><strong>${slot.display_order}</strong></td>
+                    <td><code style="background: #f3f4f6; padding: 0.25rem 0.5rem; border-radius: 4px;">${escapeHtml(slot.slot_key)}</code></td>
+                    <td><strong>${escapeHtml(slot.slot_label)}</strong></td>
+                    <td>
+                        <span class="section-badge" style="background: ${slot.is_active ? '#d1fae5' : '#fee2e2'}; color: ${slot.is_active ? '#059669' : '#dc2626'};">
+                            ${slot.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="actions">
+                            <button class="btn-icon edit" onclick="editTimeSlot(${slot.id})" title="Edit Label">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                </svg>
+                            </button>
+                            <button class="btn-icon ${slot.is_active ? 'delete' : 'edit'}" onclick="toggleTimeSlot(${slot.id})" title="${slot.is_active ? 'Disable' : 'Enable'}">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    ${slot.is_active ? 
+                                        '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>' :
+                                        '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'
+                                    }
+                                </svg>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Edit time slot
+        function editTimeSlot(id) {
+            const slot = timeSlots.find(s => s.id === id);
+            if (!slot) return;
+            
+            document.getElementById('edit-slot-id').value = id;
+            document.getElementById('edit-slot-key').value = slot.slot_key;
+            document.getElementById('edit-slot-label').value = slot.slot_label;
+            
+            document.getElementById('edit-slot-modal').classList.add('active');
+        }
+
+        function closeEditSlotModal() {
+            document.getElementById('edit-slot-modal').classList.remove('active');
+        }
+
+        document.getElementById('edit-slot-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const id = document.getElementById('edit-slot-id').value;
+            const data = {
+                slot_label: document.getElementById('edit-slot-label').value.trim()
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/time-slots/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    showToast('Time slot updated successfully');
+                    closeEditSlotModal();
+                    loadTimeSlots();
+                } else {
+                    throw new Error(result.error || 'Failed to update time slot');
+                }
+            } catch (err) {
+                console.error('Error updating time slot:', err);
+                showToast(err.message || 'Failed to update time slot', true);
+            }
+        });
+
+        // Toggle time slot active status
+        async function toggleTimeSlot(id) {
+            const slot = timeSlots.find(s => s.id === id);
+            const action = slot && slot.is_active ? 'disable' : 'enable';
+            
+            if (!confirm(`Are you sure you want to ${action} this time slot?`)) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/time-slots/${id}/toggle`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    showToast(`Time slot ${action}d successfully`);
+                    loadTimeSlots();
+                } else {
+                    throw new Error(result.error || `Failed to ${action} time slot`);
+                }
+            } catch (err) {
+                console.error('Error toggling time slot:', err);
+                showToast(err.message || `Failed to ${action} time slot`, true);
+            }
+        }
+
+        // Close edit slot modal on overlay click
+        document.getElementById('edit-slot-modal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) closeEditSlotModal();
+        });
         
         // Initialize
         loadFridges();
         loadSections();
+        loadTimeSlots();
     </script>
 </body>
 </html>

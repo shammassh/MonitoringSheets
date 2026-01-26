@@ -473,8 +473,9 @@
 
     <script>
         const API_BASE = '/fridge-temp/api';
-        const TIME_SLOTS = ['01am', '04am', '07am', '10am', '01pm', '04pm', '07pm', '10pm'];
         
+        let TIME_SLOTS = [];
+        let TIME_LABELS = {};
         let currentUser = null;
         let fridges = [];
         let existingReadings = {};
@@ -485,6 +486,9 @@
         document.addEventListener('DOMContentLoaded', async () => {
             // Set today's date
             document.getElementById('log-date').valueAsDate = new Date();
+            
+            // Load time slots first
+            await loadTimeSlots();
             
             // Load current user
             try {
@@ -498,6 +502,42 @@
             await loadSections();
         });
         
+        // Load time slots from database
+        async function loadTimeSlots() {
+            try {
+                const response = await fetch(`${API_BASE}/time-slots?_t=${Date.now()}`, {
+                    cache: 'no-store'
+                });
+                const data = await response.json();
+                TIME_SLOTS = data.slots || [];
+                TIME_LABELS = data.labels || {};
+                
+                // Update table headers dynamically
+                updateTableHeaders();
+            } catch (err) {
+                console.error('Error loading time slots:', err);
+                // Fallback to defaults
+                TIME_SLOTS = ['01am', '04am', '07am', '10am', '01pm', '04pm', '07pm', '10pm'];
+                TIME_LABELS = {
+                    '01am': '1:00 AM', '04am': '4:00 AM', '07am': '7:00 AM', '10am': '10:00 AM',
+                    '01pm': '1:00 PM', '04pm': '4:00 PM', '07pm': '7:00 PM', '10pm': '10:00 PM'
+                };
+            }
+        }
+        
+        // Update table headers based on time slots
+        function updateTableHeaders() {
+            const thead = document.querySelector('#form-card table thead tr');
+            if (!thead) return;
+            
+            let headerHtml = '<th class="fridge-col">Fridge</th>';
+            TIME_SLOTS.forEach(slot => {
+                headerHtml += `<th>${TIME_LABELS[slot] || slot}</th>`;
+            });
+            headerHtml += '<th class="action-col">Corrective Action</th>';
+            thead.innerHTML = headerHtml;
+        }
+        
         // Show toast
         function showToast(message, isError = false) {
             const toast = document.getElementById('toast');
@@ -509,7 +549,9 @@
         // Load sections
         async function loadSections() {
             try {
-                const response = await fetch(`${API_BASE}/sections`);
+                const response = await fetch(`${API_BASE}/sections?_t=${Date.now()}`, {
+                    cache: 'no-store'
+                });
                 const sections = await response.json();
                 
                 const select = document.getElementById('section-select');
@@ -533,11 +575,13 @@
             
             try {
                 // Load fridges (filter by section if selected)
-                let fridgesUrl = `${API_BASE}/fridges`;
+                let fridgesUrl = `${API_BASE}/fridges?_t=${Date.now()}`;
                 if (section) {
-                    fridgesUrl += `?section=${encodeURIComponent(section)}`;
+                    fridgesUrl += `&section=${encodeURIComponent(section)}`;
                 }
-                const fridgesResponse = await fetch(fridgesUrl);
+                const fridgesResponse = await fetch(fridgesUrl, {
+                    cache: 'no-store'
+                });
                 fridges = await fridgesResponse.json();
                 
                 if (fridges.length === 0) {
