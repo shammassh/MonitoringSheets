@@ -188,6 +188,12 @@
             color: #2563eb;
         }
 
+        .status-badge.draft {
+            background: #fef3c7;
+            color: #d97706;
+            border: 2px dashed #d97706;
+        }
+
         .card-details {
             display: flex;
             gap: 1.5rem;
@@ -258,6 +264,15 @@
 
         .btn-edit:hover {
             background: #99f6e4;
+        }
+
+        .btn-continue {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .btn-continue:hover {
+            background: #fde68a;
         }
 
         .btn-verify {
@@ -527,13 +542,15 @@
             container.innerHTML = readings.map(reading => {
                 const cookingClass = getStatusClass(reading.cooking_status);
                 const coolingClass = getStatusClass(reading.cooling_status);
+                const isDraft = reading.status === 'draft';
                 
                 return `
-                    <div class="history-card">
+                    <div class="history-card" ${isDraft ? 'style="border-left: 4px solid #d97706;"' : ''}>
                         <div class="card-content">
                             <div class="card-header">
                                 <span class="doc-number">${reading.document_number}</span>
                                 <span class="product-name">${reading.product_name}</span>
+                                ${isDraft ? '<span class="status-badge draft"><i class="fas fa-file-pen"></i> Draft</span>' : ''}
                             </div>
                             
                             <div class="status-badges">
@@ -541,17 +558,19 @@
                                     <i class="fas fa-fire"></i>
                                     Cooking: ${reading.cooking_status}
                                 </span>
+                                ${!isDraft || reading.cooling_method ? `
                                 <span class="status-badge ${coolingClass}">
                                     <i class="fas fa-snowflake"></i>
                                     Cooling: ${reading.cooling_status}
                                 </span>
+                                ` : '<span class="status-badge pending"><i class="fas fa-clock"></i> Cooling: Not Started</span>'}
                                 ${reading.verified_by ? '<span class="status-badge verified"><i class="fas fa-check"></i> Verified</span>' : ''}
                             </div>
                             
                             <div class="card-details">
                                 <span><i class="fas fa-calendar"></i> ${new Date(reading.log_date).toLocaleDateString()}</span>
                                 <span><i class="fas fa-user"></i> ${reading.filled_by}</span>
-                                <span><i class="fas fa-wind"></i> ${reading.cooling_method}</span>
+                                ${reading.cooling_method ? `<span><i class="fas fa-wind"></i> ${reading.cooling_method}</span>` : ''}
                             </div>
                             
                             <div class="temp-readings">
@@ -559,9 +578,11 @@
                                     <i class="fas fa-thermometer-full"></i>
                                     Core: ${reading.cooking_core_temp}°C
                                 </span>
+                                ${reading.start_cooling_temp !== null ? `
                                 <span class="temp-reading cooling">
                                     Start: ${reading.start_cooling_temp}°C @ ${formatTime(reading.start_cooling_time)}
                                 </span>
+                                ` : ''}
                                 ${reading.temp_after_1h !== null ? `<span class="temp-reading cooling">1h: ${reading.temp_after_1h}°C</span>` : ''}
                                 ${reading.temp_after_1h30 !== null ? `<span class="temp-reading cooling">1.5h: ${reading.temp_after_1h30}°C</span>` : ''}
                                 ${reading.temp_after_2h !== null ? `<span class="temp-reading cooling">2h: ${reading.temp_after_2h}°C</span>` : ''}
@@ -569,13 +590,19 @@
                         </div>
                         
                         <div class="card-actions">
+                            ${isDraft ? `
+                            <button class="btn btn-continue" onclick="editReading(${reading.id})">
+                                <i class="fas fa-play"></i> Continue
+                            </button>
+                            ` : `
                             <button class="btn btn-edit" onclick="editReading(${reading.id})" ${!canEdit(reading) ? 'disabled' : ''}>
                                 <i class="fas fa-edit"></i> Edit
                             </button>
-                            <button class="btn btn-verify" onclick="verifyReading(${reading.id})" ${!canVerify(reading) ? 'disabled' : ''}>
+                            `}
+                            <button class="btn btn-verify" onclick="verifyReading(${reading.id})" ${!canVerify(reading) || isDraft ? 'disabled' : ''}>
                                 <i class="fas fa-check-circle"></i> Verify
                             </button>
-                            <button class="btn btn-delete" onclick="deleteReading(${reading.id})" ${!canDelete(reading) ? 'disabled' : ''}>
+                            <button class="btn btn-delete" onclick="deleteReading(${reading.id})" ${!canDelete(reading) && !isDraft ? 'disabled' : ''}>
                                 <i class="fas fa-trash"></i> Delete
                             </button>
                         </div>

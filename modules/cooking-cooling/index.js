@@ -184,7 +184,8 @@ router.post('/api/readings', async (req, res) => {
             log_date, product_name, cooking_core_temp, cooling_method,
             start_cooling_time, start_cooling_temp,
             temp_after_1h, temp_after_1h30, temp_after_2h,
-            corrective_action_cooking, corrective_action_cooling, comments, filled_by
+            corrective_action_cooking, corrective_action_cooling, comments, filled_by,
+            status // 'draft' or 'submitted'
         } = req.body;
         
         const pool = await getPool();
@@ -199,18 +200,27 @@ router.post('/api/readings', async (req, res) => {
         
         // Calculate statuses
         const cooking_status = calculateCookingStatus(parseFloat(cooking_core_temp));
-        const cooling_status = calculateCoolingStatus(
-            parseFloat(start_cooling_temp),
-            temp_after_1h !== null && temp_after_1h !== '' ? parseFloat(temp_after_1h) : null,
-            temp_after_1h30 !== null && temp_after_1h30 !== '' ? parseFloat(temp_after_1h30) : null,
-            temp_after_2h !== null && temp_after_2h !== '' ? parseFloat(temp_after_2h) : null
-        );
         
-        // Calculate times based on start cooling time
-        const startTime = new Date(`2000-01-01T${start_cooling_time}`);
-        const time_after_1h = new Date(startTime.getTime() + 60 * 60 * 1000).toTimeString().slice(0, 5);
-        const time_after_1h30 = new Date(startTime.getTime() + 90 * 60 * 1000).toTimeString().slice(0, 5);
-        const time_after_2h = new Date(startTime.getTime() + 120 * 60 * 1000).toTimeString().slice(0, 5);
+        // For drafts, cooling fields may be optional
+        const isDraft = status === 'draft';
+        let cooling_status_calc = 'Pending';
+        let time_after_1h = null;
+        let time_after_1h30 = null;
+        let time_after_2h = null;
+        
+        if (start_cooling_time) {
+            const startTime = new Date(`2000-01-01T${start_cooling_time}`);
+            time_after_1h = new Date(startTime.getTime() + 60 * 60 * 1000).toTimeString().slice(0, 5);
+            time_after_1h30 = new Date(startTime.getTime() + 90 * 60 * 1000).toTimeString().slice(0, 5);
+            time_after_2h = new Date(startTime.getTime() + 120 * 60 * 1000).toTimeString().slice(0, 5);
+            
+            cooling_status_calc = calculateCoolingStatus(
+                start_cooling_temp ? parseFloat(start_cooling_temp) : null,
+                temp_after_1h !== null && temp_after_1h !== '' ? parseFloat(temp_after_1h) : null,
+                temp_after_1h30 !== null && temp_after_1h30 !== '' ? parseFloat(temp_after_1h30) : null,
+                temp_after_2h !== null && temp_after_2h !== '' ? parseFloat(temp_after_2h) : null
+            );
+        }
         
         const result = await pool.request()
             .input('document_number', sql.NVarChar, document_number)
@@ -218,34 +228,35 @@ router.post('/api/readings', async (req, res) => {
             .input('product_name', sql.NVarChar, product_name)
             .input('cooking_core_temp', sql.Decimal(5, 2), cooking_core_temp)
             .input('cooking_status', sql.NVarChar, cooking_status)
-            .input('cooling_method', sql.NVarChar, cooling_method)
-            .input('start_cooling_time', sql.NVarChar, start_cooling_time)
-            .input('start_cooling_temp', sql.Decimal(5, 2), start_cooling_temp)
+            .input('cooling_method', sql.NVarChar, cooling_method || null)
+            .input('start_cooling_time', sql.NVarChar, start_cooling_time || null)
+            .input('start_cooling_temp', sql.Decimal(5, 2), start_cooling_temp || null)
             .input('time_after_1h', sql.NVarChar, time_after_1h)
             .input('temp_after_1h', sql.Decimal(5, 2), temp_after_1h || null)
             .input('time_after_1h30', sql.NVarChar, time_after_1h30)
             .input('temp_after_1h30', sql.Decimal(5, 2), temp_after_1h30 || null)
             .input('time_after_2h', sql.NVarChar, time_after_2h)
             .input('temp_after_2h', sql.Decimal(5, 2), temp_after_2h || null)
-            .input('cooling_status', sql.NVarChar, cooling_status)
+            .input('cooling_status', sql.NVarChar, cooling_status_calc)
             .input('corrective_action_cooking', sql.NVarChar, corrective_action_cooking || null)
             .input('corrective_action_cooling', sql.NVarChar, corrective_action_cooling || null)
             .input('comments', sql.NVarChar, comments || null)
             .input('filled_by', sql.NVarChar, filled_by)
+            .input('status', sql.NVarChar, isDraft ? 'draft' : 'submitted')
             .query(`
                 INSERT INTO CookingCoolingReadings (
                     document_number, log_date, product_name, cooking_core_temp, cooking_status,
                     cooling_method, start_cooling_time, start_cooling_temp,
                     time_after_1h, temp_after_1h, time_after_1h30, temp_after_1h30,
                     time_after_2h, temp_after_2h, cooling_status,
-                    corrective_action_cooking, corrective_action_cooling, comments, filled_by
+                    corrective_action_cooking, corrective_action_cooling, comments, filled_by, status
                 ) OUTPUT INSERTED.*
                 VALUES (
                     @document_number, @log_date, @product_name, @cooking_core_temp, @cooking_status,
                     @cooling_method, @start_cooling_time, @start_cooling_temp,
                     @time_after_1h, @temp_after_1h, @time_after_1h30, @temp_after_1h30,
                     @time_after_2h, @temp_after_2h, @cooling_status,
-                    @corrective_action_cooking, @corrective_action_cooling, @comments, @filled_by
+                    @corrective_action_cooking, @corrective_action_cooling, @comments, @filled_by, @status
                 )
             `);
         
@@ -263,25 +274,35 @@ router.put('/api/readings/:id', async (req, res) => {
             log_date, product_name, cooking_core_temp, cooling_method,
             start_cooling_time, start_cooling_temp,
             temp_after_1h, temp_after_1h30, temp_after_2h,
-            corrective_action_cooking, corrective_action_cooling, comments
+            corrective_action_cooking, corrective_action_cooling, comments,
+            status // 'draft' or 'submitted'
         } = req.body;
         
         const pool = await getPool();
         
         // Calculate statuses
         const cooking_status = calculateCookingStatus(parseFloat(cooking_core_temp));
-        const cooling_status = calculateCoolingStatus(
-            parseFloat(start_cooling_temp),
-            temp_after_1h !== null && temp_after_1h !== '' ? parseFloat(temp_after_1h) : null,
-            temp_after_1h30 !== null && temp_after_1h30 !== '' ? parseFloat(temp_after_1h30) : null,
-            temp_after_2h !== null && temp_after_2h !== '' ? parseFloat(temp_after_2h) : null
-        );
         
-        // Calculate times based on start cooling time
-        const startTime = new Date(`2000-01-01T${start_cooling_time}`);
-        const time_after_1h = new Date(startTime.getTime() + 60 * 60 * 1000).toTimeString().slice(0, 5);
-        const time_after_1h30 = new Date(startTime.getTime() + 90 * 60 * 1000).toTimeString().slice(0, 5);
-        const time_after_2h = new Date(startTime.getTime() + 120 * 60 * 1000).toTimeString().slice(0, 5);
+        // For drafts, cooling fields may be optional
+        const isDraft = status === 'draft';
+        let cooling_status_calc = 'Pending';
+        let time_after_1h = null;
+        let time_after_1h30 = null;
+        let time_after_2h = null;
+        
+        if (start_cooling_time) {
+            const startTime = new Date(`2000-01-01T${start_cooling_time}`);
+            time_after_1h = new Date(startTime.getTime() + 60 * 60 * 1000).toTimeString().slice(0, 5);
+            time_after_1h30 = new Date(startTime.getTime() + 90 * 60 * 1000).toTimeString().slice(0, 5);
+            time_after_2h = new Date(startTime.getTime() + 120 * 60 * 1000).toTimeString().slice(0, 5);
+            
+            cooling_status_calc = calculateCoolingStatus(
+                start_cooling_temp ? parseFloat(start_cooling_temp) : null,
+                temp_after_1h !== null && temp_after_1h !== '' ? parseFloat(temp_after_1h) : null,
+                temp_after_1h30 !== null && temp_after_1h30 !== '' ? parseFloat(temp_after_1h30) : null,
+                temp_after_2h !== null && temp_after_2h !== '' ? parseFloat(temp_after_2h) : null
+            );
+        }
         
         const result = await pool.request()
             .input('id', sql.Int, req.params.id)
@@ -289,19 +310,20 @@ router.put('/api/readings/:id', async (req, res) => {
             .input('product_name', sql.NVarChar, product_name)
             .input('cooking_core_temp', sql.Decimal(5, 2), cooking_core_temp)
             .input('cooking_status', sql.NVarChar, cooking_status)
-            .input('cooling_method', sql.NVarChar, cooling_method)
-            .input('start_cooling_time', sql.NVarChar, start_cooling_time)
-            .input('start_cooling_temp', sql.Decimal(5, 2), start_cooling_temp)
+            .input('cooling_method', sql.NVarChar, cooling_method || null)
+            .input('start_cooling_time', sql.NVarChar, start_cooling_time || null)
+            .input('start_cooling_temp', sql.Decimal(5, 2), start_cooling_temp || null)
             .input('time_after_1h', sql.NVarChar, time_after_1h)
             .input('temp_after_1h', sql.Decimal(5, 2), temp_after_1h || null)
             .input('time_after_1h30', sql.NVarChar, time_after_1h30)
             .input('temp_after_1h30', sql.Decimal(5, 2), temp_after_1h30 || null)
             .input('time_after_2h', sql.NVarChar, time_after_2h)
             .input('temp_after_2h', sql.Decimal(5, 2), temp_after_2h || null)
-            .input('cooling_status', sql.NVarChar, cooling_status)
+            .input('cooling_status', sql.NVarChar, cooling_status_calc)
             .input('corrective_action_cooking', sql.NVarChar, corrective_action_cooking || null)
             .input('corrective_action_cooling', sql.NVarChar, corrective_action_cooling || null)
             .input('comments', sql.NVarChar, comments || null)
+            .input('status', sql.NVarChar, isDraft ? 'draft' : 'submitted')
             .query(`
                 UPDATE CookingCoolingReadings SET
                     log_date = @log_date,
@@ -321,6 +343,7 @@ router.put('/api/readings/:id', async (req, res) => {
                     corrective_action_cooking = @corrective_action_cooking,
                     corrective_action_cooling = @corrective_action_cooling,
                     comments = @comments,
+                    status = @status,
                     updated_at = GETDATE()
                 WHERE id = @id AND verified_by IS NULL
                 
