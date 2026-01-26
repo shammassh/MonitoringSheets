@@ -227,7 +227,8 @@ router.get('/api/documents/:id', async (req, res) => {
 // Create document with checked items
 router.post('/api/documents', async (req, res) => {
     try {
-        const { log_date, check_time, concentration, filled_by, comments, checked_items } = req.body;
+        const { log_date, check_time, concentration, filled_by, comments, 
+                log_date_2, check_time_2, concentration_2, filled_by_2, comments_2, checked_items } = req.body;
         const pool = await getPool();
         
         // Generate document number: VFW-YYYYMMDD-###
@@ -246,10 +247,15 @@ router.post('/api/documents', async (req, res) => {
             .input('concentration', sql.NVarChar, concentration)
             .input('filled_by', sql.NVarChar, filled_by)
             .input('comments', sql.NVarChar, comments || null)
+            .input('log_date_2', sql.Date, log_date_2 || null)
+            .input('check_time_2', sql.NVarChar, check_time_2 || null)
+            .input('concentration_2', sql.NVarChar, concentration_2 || null)
+            .input('filled_by_2', sql.NVarChar, filled_by_2 || null)
+            .input('comments_2', sql.NVarChar, comments_2 || null)
             .query(`INSERT INTO VegFruitWashDocuments 
-                    (document_number, log_date, check_time, concentration, filled_by, comments) 
+                    (document_number, log_date, check_time, concentration, filled_by, comments, log_date_2, check_time_2, concentration_2, filled_by_2, comments_2) 
                     OUTPUT INSERTED.id 
-                    VALUES (@document_number, @log_date, @check_time, @concentration, @filled_by, @comments)`);
+                    VALUES (@document_number, @log_date, @check_time, @concentration, @filled_by, @comments, @log_date_2, @check_time_2, @concentration_2, @filled_by_2, @comments_2)`);
         
         const documentId = insertResult.recordset[0].id;
         

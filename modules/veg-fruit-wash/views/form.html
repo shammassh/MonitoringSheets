@@ -284,17 +284,17 @@
     </header>
 
     <div class="container">
-        <!-- Check Details -->
+        <!-- Check Details 1 -->
         <div class="card">
-            <h2>📝 Check Details</h2>
+            <h2>📝 Check Details (Vegetables)</h2>
             <div class="form-row">
                 <div class="form-group">
                     <label>Date *</label>
                     <input type="date" id="log-date" required>
                 </div>
                 <div class="form-group">
-                    <label>Time *</label>
-                    <input type="time" id="check-time" required>
+                    <label>Soaking Duration (in sec) *</label>
+                    <input type="text" id="check-time" placeholder="e.g., 30, 60, 120" required>
                 </div>
                 <div class="form-group">
                     <label>Concentration (ppm) *</label>
@@ -319,6 +319,33 @@
             </div>
             <div class="items-grid" id="vegetables-list">
                 <div class="empty-state">Loading...</div>
+            </div>
+        </div>
+
+        <!-- Check Details 2 -->
+        <div class="card">
+            <h2>📝 Check Details (Fruits) <span style="font-size: 0.8rem; color: #6b7280; font-weight: normal;">- Optional</span></h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="date" id="log-date-2">
+                </div>
+                <div class="form-group">
+                    <label>Soaking Duration (in sec)</label>
+                    <input type="text" id="check-time-2" placeholder="e.g., 30, 60, 120">
+                </div>
+                <div class="form-group">
+                    <label>Concentration (ppm)</label>
+                    <input type="text" id="concentration-2" placeholder="e.g., 100 ppm">
+                </div>
+                <div class="form-group">
+                    <label>Filled By</label>
+                    <input type="text" id="filled-by-2" readonly>
+                </div>
+            </div>
+            <div class="form-group" style="margin-top: 1rem;">
+                <label>Comments (Optional)</label>
+                <textarea id="comments-2" rows="2" placeholder="Any additional notes for fruits..."></textarea>
             </div>
         </div>
 
@@ -369,19 +396,16 @@
                 document.getElementById('save-btn-text').textContent = 'Update Check';
             }
             
-            // Set today's date
+            // Set today's date for both sections
             document.getElementById('log-date').valueAsDate = new Date();
-            
-            // Set current time
-            const now = new Date();
-            document.getElementById('check-time').value = 
-                String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('log-date-2').valueAsDate = new Date();
             
             // Load current user
             try {
                 const response = await fetch(`${API_BASE}/current-user`);
                 currentUser = await response.json();
                 document.getElementById('filled-by').value = currentUser.name || 'Unknown';
+                document.getElementById('filled-by-2').value = currentUser.name || 'Unknown';
             } catch (err) {
                 console.error('Error loading user:', err);
             }
@@ -409,6 +433,15 @@
                 document.getElementById('concentration').value = doc.concentration;
                 document.getElementById('filled-by').value = doc.filled_by;
                 document.getElementById('comments').value = doc.comments || '';
+                
+                // Fill second check details (fruits)
+                if (doc.log_date_2) {
+                    document.getElementById('log-date-2').value = doc.log_date_2.split('T')[0];
+                }
+                document.getElementById('check-time-2').value = doc.check_time_2 || '';
+                document.getElementById('concentration-2').value = doc.concentration_2 || '';
+                document.getElementById('filled-by-2').value = doc.filled_by_2 || '';
+                document.getElementById('comments-2').value = doc.comments_2 || '';
                 
                 // Check the items that were selected
                 const checkedIds = docItems.map(i => i.item_id);
@@ -438,7 +471,7 @@
         // Load items
         async function loadItems() {
             try {
-                const response = await fetch(`${API_BASE}/items`);
+                const response = await fetch(`${API_BASE}/items?_=${Date.now()}`, { cache: 'no-store' });
                 items = await response.json();
                 renderItems();
             } catch (err) {
@@ -511,6 +544,13 @@
             const concentration = document.getElementById('concentration').value.trim();
             const comments = document.getElementById('comments').value.trim();
             
+            // Second check details (fruits) - optional
+            const logDate2 = document.getElementById('log-date-2').value;
+            const checkTime2 = document.getElementById('check-time-2').value.trim();
+            const concentration2 = document.getElementById('concentration-2').value.trim();
+            const filledBy2 = document.getElementById('filled-by-2').value.trim();
+            const comments2 = document.getElementById('comments-2').value.trim();
+            
             if (!logDate || !checkTime || !concentration) {
                 showToast('Please fill all required fields', true);
                 return;
@@ -540,6 +580,11 @@
                         concentration: concentration,
                         filled_by: currentUser?.name || 'Unknown',
                         comments: comments,
+                        log_date_2: logDate2 || null,
+                        check_time_2: checkTime2 || null,
+                        concentration_2: concentration2 || null,
+                        filled_by_2: filledBy2 || null,
+                        comments_2: comments2 || null,
                         checked_items: checkedItems
                     })
                 });

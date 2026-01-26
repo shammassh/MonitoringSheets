@@ -337,7 +337,7 @@
         // Load items
         async function loadItems() {
             try {
-                const response = await fetch(`${API_BASE}/items`);
+                const response = await fetch(`${API_BASE}/items?_=${Date.now()}`, { cache: 'no-store' });
                 items = await response.json();
                 renderItems();
             } catch (err) {
