@@ -449,6 +449,15 @@
         let locations = [];
         let currentUser = null;
         
+        function formatTime(timeStr) {
+            if (!timeStr) return '';
+            const [hours, minutes] = timeStr.split(':');
+            const h = parseInt(hours);
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            const h12 = h % 12 || 12;
+            return `${h12}:${minutes} ${ampm}`;
+        }
+        
         document.addEventListener('DOMContentLoaded', async () => {
             // Set default date range (last 30 days)
             const today = new Date();
@@ -581,7 +590,7 @@
                         <div class="reading-body">
                             <div class="readings-grid">
                                 <div class="period-section am">
-                                    <div class="period-title am">☀️ AM Reading</div>
+                                    <div class="period-title am">☀️ AM Reading ${r.time_am ? `<span style="font-weight: 400; font-size: 0.85rem; color: #78350f;">@ ${formatTime(r.time_am)}</span>` : ''}</div>
                                     <div class="reading-values">
                                         <div class="reading-value">
                                             <div class="label">Temperature</div>
@@ -600,7 +609,7 @@
                                     ${r.humidity_am_corrective_action ? `<div class="corrective-note"><strong>Humidity CA:</strong> ${r.humidity_am_corrective_action}</div>` : ''}
                                 </div>
                                 <div class="period-section pm">
-                                    <div class="period-title pm">🌙 PM Reading</div>
+                                    <div class="period-title pm">🌙 PM Reading ${r.time_pm ? `<span style="font-weight: 400; font-size: 0.85rem; color: #5b21b6;">@ ${formatTime(r.time_pm)}</span>` : ''}</div>
                                     <div class="reading-values">
                                         <div class="reading-value">
                                             <div class="label">Temperature</div>

@@ -216,14 +216,26 @@ async function generateDocNumber(pool) {
     return `${prefix}-${String(sequence).padStart(3, '0')}`;
 }
 
+// Helper function to safely parse decimal values
+function safeDecimal(value) {
+    if (value === null || value === undefined || value === '') return null;
+    const num = parseFloat(value);
+    if (isNaN(num)) return null;
+    // Clamp to valid DECIMAL(5,2) range (-999.99 to 999.99)
+    const clamped = Math.max(-999.99, Math.min(999.99, num));
+    // Round to 2 decimal places to fit DECIMAL(5,2)
+    return Math.round(clamped * 100) / 100;
+}
+
 // API: Create reading
 router.post('/api/readings', async (req, res) => {
+    console.log('POST /api/readings called with body:', JSON.stringify(req.body));
     try {
         const {
             branch, dry_store, reading_date,
-            temp_am, humidity_am, temp_am_status, humidity_am_status,
+            time_am, temp_am, humidity_am, temp_am_status, humidity_am_status,
             temp_am_corrective_action, humidity_am_corrective_action,
-            temp_pm, humidity_pm, temp_pm_status, humidity_pm_status,
+            time_pm, temp_pm, humidity_pm, temp_pm_status, humidity_pm_status,
             temp_pm_corrective_action, humidity_pm_corrective_action,
             filled_by
         } = req.body;
@@ -236,14 +248,16 @@ router.post('/api/readings', async (req, res) => {
             .input('branch', sql.NVarChar, branch)
             .input('dry_store', sql.NVarChar, dry_store)
             .input('reading_date', sql.Date, reading_date)
-            .input('temp_am', sql.Decimal(5, 2), temp_am || null)
-            .input('humidity_am', sql.Decimal(5, 2), humidity_am || null)
+            .input('time_am', sql.NVarChar, time_am || null)
+            .input('temp_am', sql.Decimal(5, 2), safeDecimal(temp_am))
+            .input('humidity_am', sql.Decimal(5, 2), safeDecimal(humidity_am))
             .input('temp_am_status', sql.NVarChar, temp_am_status || 'Pass')
             .input('humidity_am_status', sql.NVarChar, humidity_am_status || 'Pass')
             .input('temp_am_corrective_action', sql.NVarChar, temp_am_corrective_action || null)
             .input('humidity_am_corrective_action', sql.NVarChar, humidity_am_corrective_action || null)
-            .input('temp_pm', sql.Decimal(5, 2), temp_pm || null)
-            .input('humidity_pm', sql.Decimal(5, 2), humidity_pm || null)
+            .input('time_pm', sql.NVarChar, time_pm || null)
+            .input('temp_pm', sql.Decimal(5, 2), safeDecimal(temp_pm))
+            .input('humidity_pm', sql.Decimal(5, 2), safeDecimal(humidity_pm))
             .input('temp_pm_status', sql.NVarChar, temp_pm_status || 'Pass')
             .input('humidity_pm_status', sql.NVarChar, humidity_pm_status || 'Pass')
             .input('temp_pm_corrective_action', sql.NVarChar, temp_pm_corrective_action || null)
@@ -252,18 +266,18 @@ router.post('/api/readings', async (req, res) => {
             .query(`
                 INSERT INTO DryStoreReadings (
                     document_number, branch, dry_store, reading_date,
-                    temp_am, humidity_am, temp_am_status, humidity_am_status,
+                    time_am, temp_am, humidity_am, temp_am_status, humidity_am_status,
                     temp_am_corrective_action, humidity_am_corrective_action,
-                    temp_pm, humidity_pm, temp_pm_status, humidity_pm_status,
+                    time_pm, temp_pm, humidity_pm, temp_pm_status, humidity_pm_status,
                     temp_pm_corrective_action, humidity_pm_corrective_action,
                     filled_by
                 )
                 OUTPUT INSERTED.*
                 VALUES (
                     @document_number, @branch, @dry_store, @reading_date,
-                    @temp_am, @humidity_am, @temp_am_status, @humidity_am_status,
+                    @time_am, @temp_am, @humidity_am, @temp_am_status, @humidity_am_status,
                     @temp_am_corrective_action, @humidity_am_corrective_action,
-                    @temp_pm, @humidity_pm, @temp_pm_status, @humidity_pm_status,
+                    @time_pm, @temp_pm, @humidity_pm, @temp_pm_status, @humidity_pm_status,
                     @temp_pm_corrective_action, @humidity_pm_corrective_action,
                     @filled_by
                 )
@@ -281,9 +295,9 @@ router.put('/api/readings/:id', async (req, res) => {
     try {
         const {
             branch, dry_store, reading_date,
-            temp_am, humidity_am, temp_am_status, humidity_am_status,
+            time_am, temp_am, humidity_am, temp_am_status, humidity_am_status,
             temp_am_corrective_action, humidity_am_corrective_action,
-            temp_pm, humidity_pm, temp_pm_status, humidity_pm_status,
+            time_pm, temp_pm, humidity_pm, temp_pm_status, humidity_pm_status,
             temp_pm_corrective_action, humidity_pm_corrective_action,
             filled_by
         } = req.body;
@@ -295,14 +309,16 @@ router.put('/api/readings/:id', async (req, res) => {
             .input('branch', sql.NVarChar, branch)
             .input('dry_store', sql.NVarChar, dry_store)
             .input('reading_date', sql.Date, reading_date)
-            .input('temp_am', sql.Decimal(5, 2), temp_am || null)
-            .input('humidity_am', sql.Decimal(5, 2), humidity_am || null)
+            .input('time_am', sql.NVarChar, time_am || null)
+            .input('temp_am', sql.Decimal(5, 2), safeDecimal(temp_am))
+            .input('humidity_am', sql.Decimal(5, 2), safeDecimal(humidity_am))
             .input('temp_am_status', sql.NVarChar, temp_am_status || 'Pass')
             .input('humidity_am_status', sql.NVarChar, humidity_am_status || 'Pass')
             .input('temp_am_corrective_action', sql.NVarChar, temp_am_corrective_action || null)
             .input('humidity_am_corrective_action', sql.NVarChar, humidity_am_corrective_action || null)
-            .input('temp_pm', sql.Decimal(5, 2), temp_pm || null)
-            .input('humidity_pm', sql.Decimal(5, 2), humidity_pm || null)
+            .input('time_pm', sql.NVarChar, time_pm || null)
+            .input('temp_pm', sql.Decimal(5, 2), safeDecimal(temp_pm))
+            .input('humidity_pm', sql.Decimal(5, 2), safeDecimal(humidity_pm))
             .input('temp_pm_status', sql.NVarChar, temp_pm_status || 'Pass')
             .input('humidity_pm_status', sql.NVarChar, humidity_pm_status || 'Pass')
             .input('temp_pm_corrective_action', sql.NVarChar, temp_pm_corrective_action || null)
@@ -311,11 +327,11 @@ router.put('/api/readings/:id', async (req, res) => {
             .query(`
                 UPDATE DryStoreReadings SET
                     branch = @branch, dry_store = @dry_store, reading_date = @reading_date,
-                    temp_am = @temp_am, humidity_am = @humidity_am,
+                    time_am = @time_am, temp_am = @temp_am, humidity_am = @humidity_am,
                     temp_am_status = @temp_am_status, humidity_am_status = @humidity_am_status,
                     temp_am_corrective_action = @temp_am_corrective_action,
                     humidity_am_corrective_action = @humidity_am_corrective_action,
-                    temp_pm = @temp_pm, humidity_pm = @humidity_pm,
+                    time_pm = @time_pm, temp_pm = @temp_pm, humidity_pm = @humidity_pm,
                     temp_pm_status = @temp_pm_status, humidity_pm_status = @humidity_pm_status,
                     temp_pm_corrective_action = @temp_pm_corrective_action,
                     humidity_pm_corrective_action = @humidity_pm_corrective_action,
