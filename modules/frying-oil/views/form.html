@@ -479,7 +479,7 @@
                             <input type="hidden" id="status">
                         </div>
                     </div>
-                    <div class="threshold-hint">🟢 Pass: ≤20% TPC | 🟠 Warning: 20-24% TPC | 🔴 Fail: >24% TPC (Oil should be replaced)</div>
+                    <div class="threshold-hint" id="threshold-hint">Select equipment to see thresholds</div>
                     
                     <div class="corrective-action-group" id="corrective-action-group">
                         <div class="form-group" style="margin-bottom: 0;">
@@ -721,6 +721,9 @@
                 document.getElementById('reference-note').style.display = 'none';
             }
             
+            // Update threshold hint based on reference
+            updateThresholdHint();
+            
             document.getElementById('test-form-card').style.display = 'block';
             document.getElementById('submit-bar').style.display = 'flex';
             
@@ -759,12 +762,64 @@
             return date;
         }
         
+        // Parse thresholds from reference text
+        // Expected formats in reference:
+        // "<18.5%" or "≤18.5%" for pass threshold
+        // "19-24%" or "20-24%" for warning range  
+        // ">24%" for fail threshold
+        function parseThresholds(referenceText) {
+            if (!referenceText) {
+                return { passMax: 20, warningMax: 24 }; // Default values
+            }
+            
+            let passMax = 20;
+            let warningMax = 24;
+            
+            // Try to find pass threshold: <X% or ≤X% or acceptable...X%
+            const passMatch = referenceText.match(/[<≤]\s*(\d+\.?\d*)\s*%/i);
+            if (passMatch) {
+                passMax = parseFloat(passMatch[1]);
+            }
+            
+            // Try to find warning range: X-Y% (takes the upper bound)
+            const rangeMatch = referenceText.match(/(\d+\.?\d*)\s*[-–]\s*(\d+\.?\d*)\s*%/i);
+            if (rangeMatch) {
+                warningMax = parseFloat(rangeMatch[2]);
+                // If we didn't find a pass threshold, use the lower bound of warning range
+                if (!passMatch) {
+                    passMax = parseFloat(rangeMatch[1]) - 0.1;
+                }
+            }
+            
+            // Try to find fail threshold: >X%
+            const failMatch = referenceText.match(/>\s*(\d+\.?\d*)\s*%?/i);
+            if (failMatch && !rangeMatch) {
+                warningMax = parseFloat(failMatch[1]);
+            }
+            
+            return { passMax, warningMax };
+        }
+        
+        function updateThresholdHint() {
+            const hintEl = document.getElementById('threshold-hint');
+            if (!selectedReference) {
+                hintEl.textContent = 'Select equipment to see thresholds';
+                return;
+            }
+            
+            const thresholds = parseThresholds(selectedReference.reference);
+            hintEl.innerHTML = `🟢 Pass: ≤${thresholds.passMax}% TPC | 🟠 Warning: ${thresholds.passMax}-${thresholds.warningMax}% TPC | 🔴 Fail: >${thresholds.warningMax}% TPC (Oil should be replaced)`;
+        }
+        
         function calculateStatus() {
             const testedValue = parseFloat(document.getElementById('tested-value').value);
             const statusDisplay = document.getElementById('status-display');
             const correctiveActionGroup = document.getElementById('corrective-action-group');
-            const TPC_GOOD = 20;     // Green: ≤20%
-            const TPC_WARNING = 24;  // Orange: 20-24%, Red: >24%
+            
+            // Get thresholds from selected reference
+            const thresholds = parseThresholds(selectedReference ? selectedReference.reference : null);
+            const TPC_GOOD = thresholds.passMax;
+            const TPC_WARNING = thresholds.warningMax;
             
             if (isNaN(testedValue)) {
                 statusDisplay.textContent = '--';

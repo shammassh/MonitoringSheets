@@ -2,17 +2,16 @@ const express = require('express');
 const router = express.Router();
 const sql = require('mssql');
 const path = require('path');
+const config = require('../../config/default');
 
-const dbConfig = {
-    server: 'localhost',
-    database: 'FSMonitoringDB_UAT',
-    user: 'sa',
-    password: 'Kokowawa123@@',
-    options: {
-        encrypt: false,
-        trustServerCertificate: true
-    }
-};
+// Middleware to prevent caching of API responses
+router.use('/api', (req, res, next) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    res.set('Surrogate-Control', 'no-store');
+    next();
+});
 
 // Serve static pages
 router.get('/', (req, res) => {
@@ -34,7 +33,7 @@ router.get('/sections', (req, res) => {
 // API: Get settings
 router.get('/api/settings', async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await sql.connect(config.database);
         const result = await pool.request().query('SELECT * FROM WaterQualitySettings');
         
         const settings = {};
@@ -52,7 +51,7 @@ router.get('/api/settings', async (req, res) => {
 // API: Update settings
 router.put('/api/settings', async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await sql.connect(config.database);
         
         for (const [key, value] of Object.entries(req.body)) {
             await pool.request()
@@ -76,7 +75,7 @@ router.put('/api/settings', async (req, res) => {
 // API: Get sections
 router.get('/api/sections', async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await sql.connect(config.database);
         const result = await pool.request()
             .query('SELECT * FROM WaterQualitySections WHERE is_active = 1 ORDER BY name');
         res.json(result.recordset);
@@ -90,7 +89,7 @@ router.get('/api/sections', async (req, res) => {
 router.post('/api/sections', async (req, res) => {
     try {
         const { name } = req.body;
-        const pool = await sql.connect(dbConfig);
+        const pool = await sql.connect(config.database);
         const result = await pool.request()
             .input('name', sql.NVarChar, name)
             .query('INSERT INTO WaterQualitySections (name) OUTPUT INSERTED.* VALUES (@name)');
@@ -104,7 +103,7 @@ router.post('/api/sections', async (req, res) => {
 // API: Delete section
 router.delete('/api/sections/:id', async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await sql.connect(config.database);
         await pool.request()
             .input('id', sql.Int, req.params.id)
             .query('UPDATE WaterQualitySections SET is_active = 0 WHERE id = @id');
@@ -118,7 +117,7 @@ router.delete('/api/sections/:id', async (req, res) => {
 // API: Get all readings
 router.get('/api/readings', async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await sql.connect(config.database);
         const result = await pool.request()
             .query('SELECT * FROM WaterQualityReadings ORDER BY reading_date DESC, created_at DESC');
         res.json(result.recordset);
@@ -131,7 +130,7 @@ router.get('/api/readings', async (req, res) => {
 // API: Get single reading
 router.get('/api/readings/:id', async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await sql.connect(config.database);
         const result = await pool.request()
             .input('id', sql.Int, req.params.id)
             .query('SELECT * FROM WaterQualityReadings WHERE id = @id');
@@ -179,7 +178,7 @@ router.post('/api/readings', async (req, res) => {
             corrective_action, filled_by
         } = req.body;
         
-        const pool = await sql.connect(dbConfig);
+        const pool = await sql.connect(config.database);
         const docNumber = await generateDocNumber(pool);
         
         const result = await pool.request()
@@ -241,7 +240,7 @@ router.put('/api/readings/:id', async (req, res) => {
             corrective_action, filled_by
         } = req.body;
         
-        const pool = await sql.connect(dbConfig);
+        const pool = await sql.connect(config.database);
         
         const result = await pool.request()
             .input('id', sql.Int, req.params.id)
@@ -289,7 +288,7 @@ router.put('/api/readings/:id', async (req, res) => {
 // API: Delete reading
 router.delete('/api/readings/:id', async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await sql.connect(config.database);
         await pool.request()
             .input('id', sql.Int, req.params.id)
             .query('DELETE FROM WaterQualityReadings WHERE id = @id');
@@ -303,7 +302,7 @@ router.delete('/api/readings/:id', async (req, res) => {
 // API: Verify reading
 router.post('/api/readings/:id/verify', async (req, res) => {
     try {
-        const pool = await sql.connect(dbConfig);
+        const pool = await sql.connect(config.database);
         const verifiedBy = req.currentUser?.displayName || req.currentUser?.name || 'Unknown';
         
         const result = await pool.request()

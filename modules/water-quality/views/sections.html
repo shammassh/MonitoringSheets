@@ -530,7 +530,9 @@
         
         async function loadSections() {
             try {
-                const res = await fetch('/water-quality/api/sections');
+                const res = await fetch('/water-quality/api/sections?_=' + Date.now(), {
+                    cache: 'no-store'
+                });
                 sections = await res.json();
                 renderSections();
             } catch (e) {
