@@ -253,6 +253,29 @@
             color: #6b7280;
         }
         
+        .limit-warning {
+            font-size: 0.75rem;
+            color: #ef4444;
+            margin-top: 0.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        
+        .limit-warning::before {
+            content: '⚠️';
+        }
+        
+        .input-error {
+            border-color: #ef4444 !important;
+            background-color: #fef2f2 !important;
+        }
+        
+        .input-success {
+            border-color: #16a34a !important;
+            background-color: #f0fdf4 !important;
+        }
+        
         @media (max-width: 640px) {
             .header-content {
                 flex-direction: column;
@@ -286,19 +309,21 @@
     <div class="container">
         <!-- Check Details 1 -->
         <div class="card">
-            <h2>📝 Check Details (Vegetables)</h2>
+            <h2>📝 Check Detail 1</h2>
             <div class="form-row">
                 <div class="form-group">
                     <label>Date *</label>
                     <input type="date" id="log-date" required>
                 </div>
                 <div class="form-group">
-                    <label>Soaking Duration (in sec) *</label>
-                    <input type="text" id="check-time" placeholder="e.g., 30, 60, 120" required>
+                    <label>Soaking Duration (in sec) * <span style="font-size: 0.75rem; color: #6b7280;">(Limit: 60-90 sec)</span></label>
+                    <input type="number" id="check-time" placeholder="60-90" min="1" required onchange="checkLimits1()">
+                    <span id="check-time-warning" class="limit-warning" style="display: none;"></span>
                 </div>
                 <div class="form-group">
-                    <label>Concentration (ppm) *</label>
-                    <input type="text" id="concentration" placeholder="e.g., 100 ppm" required>
+                    <label>Concentration (ppm) * <span style="font-size: 0.75rem; color: #6b7280;">(Limit: 85 ppm)</span></label>
+                    <input type="number" id="concentration" placeholder="85" min="1" required onchange="checkLimits1()">
+                    <span id="concentration-warning" class="limit-warning" style="display: none;"></span>
                 </div>
                 <div class="form-group">
                     <label>Filled By</label>
@@ -306,8 +331,14 @@
                 </div>
             </div>
             <div class="form-group" style="margin-top: 1rem;">
-                <label>Comments (Optional)</label>
-                <textarea id="comments" rows="2" placeholder="Any additional notes..."></textarea>
+                <label id="comments-label">Comments / Corrective Action <span id="comments-required" style="color: #ef4444; display: none;">* (Required - value outside limit)</span></label>
+                <textarea id="comments" rows="2" placeholder="Enter corrective action if values are outside limits..."></textarea>
+            </div>
+            <div class="form-group" style="margin-top: 1rem;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" id="peracetic-acid-1" style="width: 20px; height: 20px; accent-color: #16a34a;">
+                    <span>Peracetic Acid</span>
+                </label>
             </div>
         </div>
 
@@ -324,19 +355,21 @@
 
         <!-- Check Details 2 -->
         <div class="card">
-            <h2>📝 Check Details (Fruits) <span style="font-size: 0.8rem; color: #6b7280; font-weight: normal;">- Optional</span></h2>
+            <h2>📝 Check Detail 2 <span style="font-size: 0.8rem; color: #6b7280; font-weight: normal;">- Optional</span></h2>
             <div class="form-row">
                 <div class="form-group">
                     <label>Date</label>
                     <input type="date" id="log-date-2">
                 </div>
                 <div class="form-group">
-                    <label>Soaking Duration (in sec)</label>
-                    <input type="text" id="check-time-2" placeholder="e.g., 30, 60, 120">
+                    <label>Soaking Duration (in sec) <span style="font-size: 0.75rem; color: #6b7280;">(Limit: 60-90 sec)</span></label>
+                    <input type="number" id="check-time-2" placeholder="60-90" min="1" onchange="checkLimits2()">
+                    <span id="check-time-2-warning" class="limit-warning" style="display: none;"></span>
                 </div>
                 <div class="form-group">
-                    <label>Concentration (ppm)</label>
-                    <input type="text" id="concentration-2" placeholder="e.g., 100 ppm">
+                    <label>Concentration (ppm) <span style="font-size: 0.75rem; color: #6b7280;">(Limit: 85 ppm)</span></label>
+                    <input type="number" id="concentration-2" placeholder="85" min="1" onchange="checkLimits2()">
+                    <span id="concentration-2-warning" class="limit-warning" style="display: none;"></span>
                 </div>
                 <div class="form-group">
                     <label>Filled By</label>
@@ -344,8 +377,14 @@
                 </div>
             </div>
             <div class="form-group" style="margin-top: 1rem;">
-                <label>Comments (Optional)</label>
-                <textarea id="comments-2" rows="2" placeholder="Any additional notes for fruits..."></textarea>
+                <label id="comments-2-label">Comments / Corrective Action <span id="comments-2-required" style="color: #ef4444; display: none;">* (Required - value outside limit)</span></label>
+                <textarea id="comments-2" rows="2" placeholder="Enter corrective action if values are outside limits..."></textarea>
+            </div>
+            <div class="form-group" style="margin-top: 1rem;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                    <input type="checkbox" id="peracetic-acid-2" style="width: 20px; height: 20px; accent-color: #16a34a;">
+                    <span>Peracetic Acid</span>
+                </label>
             </div>
         </div>
 
@@ -443,6 +482,10 @@
                 document.getElementById('filled-by-2').value = doc.filled_by_2 || '';
                 document.getElementById('comments-2').value = doc.comments_2 || '';
                 
+                // Load peracetic acid checkboxes
+                document.getElementById('peracetic-acid-1').checked = doc.peracetic_acid_1 || false;
+                document.getElementById('peracetic-acid-2').checked = doc.peracetic_acid_2 || false;
+                
                 // Check the items that were selected
                 const checkedIds = docItems.map(i => i.item_id);
                 document.querySelectorAll('.item-checkbox').forEach(label => {
@@ -537,12 +580,107 @@
             updateCount();
         }
         
+        // Check limits for Check Detail 1
+        function checkLimits1() {
+            const checkTime = parseFloat(document.getElementById('check-time').value) || 0;
+            const concentration = parseFloat(document.getElementById('concentration').value) || 0;
+            
+            const checkTimeInput = document.getElementById('check-time');
+            const concentrationInput = document.getElementById('concentration');
+            const checkTimeWarning = document.getElementById('check-time-warning');
+            const concentrationWarning = document.getElementById('concentration-warning');
+            const commentsRequired = document.getElementById('comments-required');
+            
+            let hasError = false;
+            
+            // Check soaking duration (60-90 sec)
+            if (checkTime > 0) {
+                if (checkTime < 60 || checkTime > 90) {
+                    checkTimeInput.classList.add('input-error');
+                    checkTimeInput.classList.remove('input-success');
+                    checkTimeWarning.textContent = 'Outside limit (60-90 sec)';
+                    checkTimeWarning.style.display = 'block';
+                    hasError = true;
+                } else {
+                    checkTimeInput.classList.remove('input-error');
+                    checkTimeInput.classList.add('input-success');
+                    checkTimeWarning.style.display = 'none';
+                }
+            }
+            
+            // Check concentration (85 ppm)
+            if (concentration > 0) {
+                if (concentration !== 85) {
+                    concentrationInput.classList.add('input-error');
+                    concentrationInput.classList.remove('input-success');
+                    concentrationWarning.textContent = 'Outside limit (should be 85 ppm)';
+                    concentrationWarning.style.display = 'block';
+                    hasError = true;
+                } else {
+                    concentrationInput.classList.remove('input-error');
+                    concentrationInput.classList.add('input-success');
+                    concentrationWarning.style.display = 'none';
+                }
+            }
+            
+            // Show/hide required marker for comments
+            commentsRequired.style.display = hasError ? 'inline' : 'none';
+        }
+        
+        // Check limits for Check Detail 2
+        function checkLimits2() {
+            const checkTime = parseFloat(document.getElementById('check-time-2').value) || 0;
+            const concentration = parseFloat(document.getElementById('concentration-2').value) || 0;
+            
+            const checkTimeInput = document.getElementById('check-time-2');
+            const concentrationInput = document.getElementById('concentration-2');
+            const checkTimeWarning = document.getElementById('check-time-2-warning');
+            const concentrationWarning = document.getElementById('concentration-2-warning');
+            const commentsRequired = document.getElementById('comments-2-required');
+            
+            let hasError = false;
+            
+            // Check soaking duration (60-90 sec)
+            if (checkTime > 0) {
+                if (checkTime < 60 || checkTime > 90) {
+                    checkTimeInput.classList.add('input-error');
+                    checkTimeInput.classList.remove('input-success');
+                    checkTimeWarning.textContent = 'Outside limit (60-90 sec)';
+                    checkTimeWarning.style.display = 'block';
+                    hasError = true;
+                } else {
+                    checkTimeInput.classList.remove('input-error');
+                    checkTimeInput.classList.add('input-success');
+                    checkTimeWarning.style.display = 'none';
+                }
+            }
+            
+            // Check concentration (85 ppm)
+            if (concentration > 0) {
+                if (concentration !== 85) {
+                    concentrationInput.classList.add('input-error');
+                    concentrationInput.classList.remove('input-success');
+                    concentrationWarning.textContent = 'Outside limit (should be 85 ppm)';
+                    concentrationWarning.style.display = 'block';
+                    hasError = true;
+                } else {
+                    concentrationInput.classList.remove('input-error');
+                    concentrationInput.classList.add('input-success');
+                    concentrationWarning.style.display = 'none';
+                }
+            }
+            
+            // Show/hide required marker for comments
+            commentsRequired.style.display = hasError ? 'inline' : 'none';
+        }
+        
         // Save check
         async function saveCheck() {
             const logDate = document.getElementById('log-date').value;
             const checkTime = document.getElementById('check-time').value;
             const concentration = document.getElementById('concentration').value.trim();
             const comments = document.getElementById('comments').value.trim();
+            const peraceticAcid1 = document.getElementById('peracetic-acid-1').checked;
             
             // Second check details (fruits) - optional
             const logDate2 = document.getElementById('log-date-2').value;
@@ -550,10 +688,35 @@
             const concentration2 = document.getElementById('concentration-2').value.trim();
             const filledBy2 = document.getElementById('filled-by-2').value.trim();
             const comments2 = document.getElementById('comments-2').value.trim();
+            const peraceticAcid2 = document.getElementById('peracetic-acid-2').checked;
             
             if (!logDate || !checkTime || !concentration) {
                 showToast('Please fill all required fields', true);
                 return;
+            }
+            
+            // Check limits for Check Detail 1
+            const checkTimeNum = parseFloat(checkTime);
+            const concentrationNum = parseFloat(concentration);
+            const isOutsideLimit1 = checkTimeNum < 60 || checkTimeNum > 90 || concentrationNum !== 85;
+            
+            if (isOutsideLimit1 && !comments) {
+                showToast('Corrective action (comments) is required when values are outside limits', true);
+                document.getElementById('comments').focus();
+                return;
+            }
+            
+            // Check limits for Check Detail 2 (only if filled)
+            if (checkTime2 || concentration2) {
+                const checkTime2Num = parseFloat(checkTime2) || 0;
+                const concentration2Num = parseFloat(concentration2) || 0;
+                const isOutsideLimit2 = checkTime2Num < 60 || checkTime2Num > 90 || concentration2Num !== 85;
+                
+                if (isOutsideLimit2 && !comments2) {
+                    showToast('Corrective action (comments) is required for Check Detail 2 when values are outside limits', true);
+                    document.getElementById('comments-2').focus();
+                    return;
+                }
             }
             
             const checkedItems = [];
@@ -580,11 +743,13 @@
                         concentration: concentration,
                         filled_by: currentUser?.name || 'Unknown',
                         comments: comments,
+                        peracetic_acid_1: peraceticAcid1,
                         log_date_2: logDate2 || null,
                         check_time_2: checkTime2 || null,
                         concentration_2: concentration2 || null,
                         filled_by_2: filledBy2 || null,
                         comments_2: comments2 || null,
+                        peracetic_acid_2: peraceticAcid2,
                         checked_items: checkedItems
                     })
                 });
