@@ -94,6 +94,22 @@ BEGIN
 END
 GO
 
+-- Add production_date column if it doesn't exist
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('QCR_Entries') AND name = 'production_date')
+BEGIN
+    ALTER TABLE QCR_Entries ADD production_date DATE NULL;
+    PRINT 'Added production_date column to QCR_Entries';
+END
+GO
+
+-- Add truck_cleanliness column if it doesn't exist
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('QCR_Entries') AND name = 'truck_cleanliness')
+BEGIN
+    ALTER TABLE QCR_Entries ADD truck_cleanliness BIT DEFAULT 0;
+    PRINT 'Added truck_cleanliness column to QCR_Entries';
+END
+GO
+
 -- Create indexes for better performance
 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_QCR_Documents_LogDate')
 BEGIN

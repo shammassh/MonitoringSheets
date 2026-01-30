@@ -118,9 +118,10 @@ router.get('/form', (req, res) => {
 router.get('/history', (req, res) => {
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
     res.set('Pragma', 'no-cache');
-    res.set('Expires', '0');
+    res.set('Expires', '-1');
     res.set('Surrogate-Control', 'no-store');
     res.set('ETag', Date.now().toString());
+    res.set('Last-Modified', new Date().toUTCString());
     res.sendFile(path.join(__dirname, 'views', 'history.html'));
 });
 
@@ -453,8 +454,8 @@ router.post('/api/entries', async (req, res) => {
         const {
             document_id,
             product_name,
+            production_date,
             product_expiry_date,
-            supplier_id,
             supplier_name,
             receiving_time,
             receiving_temp,
@@ -462,10 +463,8 @@ router.post('/api/entries', async (req, res) => {
             product_well_covered,
             pack_opened_inspected,
             no_physical_hazards,
+            truck_cleanliness,
             storage_time,
-            storage_product_temp,
-            chiller_freezer_temp,
-            properly_stored,
             comments,
             corrective_action,
             quality_controller_signature
@@ -478,14 +477,14 @@ router.post('/api/entries', async (req, res) => {
         
         // Determine overall status
         const allChecks = receiving_area_clean && product_well_covered && 
-                          pack_opened_inspected && no_physical_hazards && properly_stored;
+                          pack_opened_inspected && no_physical_hazards && truck_cleanliness;
         const overall_status = allChecks ? 'Pass' : 'Needs Review';
         
         const result = await pool.request()
             .input('document_id', sql.Int, document_id)
             .input('product_name', sql.NVarChar, product_name)
+            .input('production_date', sql.Date, production_date || null)
             .input('product_expiry_date', sql.Date, product_expiry_date || null)
-            .input('supplier_id', sql.Int, supplier_id || null)
             .input('supplier_name', sql.NVarChar, supplier_name || null)
             .input('receiving_time', sql.NVarChar, formatTimeForSQL(receiving_time))
             .input('receiving_temp', sql.Decimal(5, 2), receiving_temp || null)
@@ -493,10 +492,8 @@ router.post('/api/entries', async (req, res) => {
             .input('product_well_covered', sql.Bit, product_well_covered ? 1 : 0)
             .input('pack_opened_inspected', sql.Bit, pack_opened_inspected ? 1 : 0)
             .input('no_physical_hazards', sql.Bit, no_physical_hazards ? 1 : 0)
+            .input('truck_cleanliness', sql.Bit, truck_cleanliness ? 1 : 0)
             .input('storage_time', sql.NVarChar, formatTimeForSQL(storage_time))
-            .input('storage_product_temp', sql.Decimal(5, 2), storage_product_temp || null)
-            .input('chiller_freezer_temp', sql.Decimal(5, 2), chiller_freezer_temp || null)
-            .input('properly_stored', sql.Bit, properly_stored ? 1 : 0)
             .input('duration_minutes', sql.Int, duration_minutes)
             .input('comments', sql.NVarChar, comments || null)
             .input('corrective_action', sql.NVarChar, corrective_action || null)
@@ -504,19 +501,19 @@ router.post('/api/entries', async (req, res) => {
             .input('signature_timestamp', sql.DateTime, quality_controller_signature ? new Date() : null)
             .input('overall_status', sql.NVarChar, overall_status)
             .query(`INSERT INTO QCR_Entries (
-                        document_id, product_name, product_expiry_date, supplier_id, supplier_name,
+                        document_id, product_name, production_date, product_expiry_date, supplier_name,
                         receiving_time, receiving_temp, receiving_area_clean, product_well_covered,
-                        pack_opened_inspected, no_physical_hazards, storage_time, storage_product_temp,
-                        chiller_freezer_temp, properly_stored, duration_minutes, comments,
-                        corrective_action, quality_controller_signature, signature_timestamp, overall_status
+                        pack_opened_inspected, no_physical_hazards, truck_cleanliness, storage_time,
+                        duration_minutes, comments, corrective_action, quality_controller_signature,
+                        signature_timestamp, overall_status
                     ) 
                     OUTPUT INSERTED.* 
                     VALUES (
-                        @document_id, @product_name, @product_expiry_date, @supplier_id, @supplier_name,
+                        @document_id, @product_name, @production_date, @product_expiry_date, @supplier_name,
                         TRY_CAST(@receiving_time AS TIME), @receiving_temp, @receiving_area_clean, @product_well_covered,
-                        @pack_opened_inspected, @no_physical_hazards, TRY_CAST(@storage_time AS TIME), @storage_product_temp,
-                        @chiller_freezer_temp, @properly_stored, @duration_minutes, @comments,
-                        @corrective_action, @quality_controller_signature, @signature_timestamp, @overall_status
+                        @pack_opened_inspected, @no_physical_hazards, @truck_cleanliness, TRY_CAST(@storage_time AS TIME),
+                        @duration_minutes, @comments, @corrective_action, @quality_controller_signature,
+                        @signature_timestamp, @overall_status
                     )`);
         
         res.json(result.recordset[0]);
@@ -534,8 +531,8 @@ router.put('/api/entries/:id', async (req, res) => {
         
         const {
             product_name,
+            production_date,
             product_expiry_date,
-            supplier_id,
             supplier_name,
             receiving_time,
             receiving_temp,
@@ -543,10 +540,8 @@ router.put('/api/entries/:id', async (req, res) => {
             product_well_covered,
             pack_opened_inspected,
             no_physical_hazards,
+            truck_cleanliness,
             storage_time,
-            storage_product_temp,
-            chiller_freezer_temp,
-            properly_stored,
             comments,
             corrective_action,
             quality_controller_signature
@@ -559,14 +554,14 @@ router.put('/api/entries/:id', async (req, res) => {
         
         // Determine overall status
         const allChecks = receiving_area_clean && product_well_covered && 
-                          pack_opened_inspected && no_physical_hazards && properly_stored;
+                          pack_opened_inspected && no_physical_hazards && truck_cleanliness;
         const overall_status = allChecks ? 'Pass' : 'Needs Review';
         
         await pool.request()
             .input('id', sql.Int, req.params.id)
             .input('product_name', sql.NVarChar, product_name)
+            .input('production_date', sql.Date, production_date || null)
             .input('product_expiry_date', sql.Date, product_expiry_date || null)
-            .input('supplier_id', sql.Int, supplier_id || null)
             .input('supplier_name', sql.NVarChar, supplier_name || null)
             .input('receiving_time', sql.NVarChar, formatTimeForSQL(receiving_time))
             .input('receiving_temp', sql.Decimal(5, 2), receiving_temp || null)
@@ -574,10 +569,8 @@ router.put('/api/entries/:id', async (req, res) => {
             .input('product_well_covered', sql.Bit, product_well_covered ? 1 : 0)
             .input('pack_opened_inspected', sql.Bit, pack_opened_inspected ? 1 : 0)
             .input('no_physical_hazards', sql.Bit, no_physical_hazards ? 1 : 0)
+            .input('truck_cleanliness', sql.Bit, truck_cleanliness ? 1 : 0)
             .input('storage_time', sql.NVarChar, formatTimeForSQL(storage_time))
-            .input('storage_product_temp', sql.Decimal(5, 2), storage_product_temp || null)
-            .input('chiller_freezer_temp', sql.Decimal(5, 2), chiller_freezer_temp || null)
-            .input('properly_stored', sql.Bit, properly_stored ? 1 : 0)
             .input('duration_minutes', sql.Int, duration_minutes)
             .input('comments', sql.NVarChar, comments || null)
             .input('corrective_action', sql.NVarChar, corrective_action || null)
@@ -586,8 +579,8 @@ router.put('/api/entries/:id', async (req, res) => {
             .input('overall_status', sql.NVarChar, overall_status)
             .query(`UPDATE QCR_Entries SET 
                     product_name = @product_name,
+                    production_date = @production_date,
                     product_expiry_date = @product_expiry_date,
-                    supplier_id = @supplier_id,
                     supplier_name = @supplier_name,
                     receiving_time = TRY_CAST(@receiving_time AS TIME),
                     receiving_temp = @receiving_temp,
@@ -595,10 +588,8 @@ router.put('/api/entries/:id', async (req, res) => {
                     product_well_covered = @product_well_covered,
                     pack_opened_inspected = @pack_opened_inspected,
                     no_physical_hazards = @no_physical_hazards,
+                    truck_cleanliness = @truck_cleanliness,
                     storage_time = TRY_CAST(@storage_time AS TIME),
-                    storage_product_temp = @storage_product_temp,
-                    chiller_freezer_temp = @chiller_freezer_temp,
-                    properly_stored = @properly_stored,
                     duration_minutes = @duration_minutes,
                     comments = @comments,
                     corrective_action = @corrective_action,
