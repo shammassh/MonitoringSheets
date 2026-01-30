@@ -99,18 +99,25 @@
             margin-bottom: 0.5rem;
         }
         
-        .form-group input {
+        .form-group input,
+        .form-group textarea {
             width: 100%;
             padding: 0.75rem;
             border: 2px solid #e5e7eb;
             border-radius: 8px;
             font-size: 1rem;
             transition: border-color 0.2s;
+            font-family: inherit;
         }
         
-        .form-group input:focus {
+        .form-group input:focus,
+        .form-group textarea:focus {
             outline: none;
             border-color: #3b82f6;
+        }
+        
+        .form-group textarea {
+            resize: vertical;
         }
         
         .form-row {
@@ -230,6 +237,12 @@
                         <input type="text" id="edition" placeholder="e.g., 1">
                     </div>
                     
+                    <div class="form-group">
+                        <label for="branches">Branches</label>
+                        <textarea id="branches" rows="3" placeholder="e.g., Main Kitchen, Satellite Kitchen, Bakery"></textarea>
+                        <div class="form-help">Enter branch names separated by commas. These will appear in the calibration form dropdown.</div>
+                    </div>
+                    
                     <button type="submit" class="btn btn-primary" id="save-btn">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
@@ -261,6 +274,7 @@
                 document.getElementById('creation_date').value = settings.creation_date || '';
                 document.getElementById('revision_date').value = settings.revision_date || '';
                 document.getElementById('edition').value = settings.edition || '1';
+                document.getElementById('branches').value = settings.branches || '';
             } catch (e) {
                 console.error('Error loading settings:', e);
                 showToast('Failed to load settings', 'error');
@@ -278,7 +292,8 @@
                 document_prefix: document.getElementById('document_prefix').value,
                 creation_date: document.getElementById('creation_date').value,
                 revision_date: document.getElementById('revision_date').value,
-                edition: document.getElementById('edition').value
+                edition: document.getElementById('edition').value,
+                branches: document.getElementById('branches').value
             };
             
             try {

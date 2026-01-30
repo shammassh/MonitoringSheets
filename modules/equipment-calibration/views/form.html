@@ -463,6 +463,13 @@
             </div>
             <div class="card-body">
                 <form id="calibration-form">
+                    <div class="form-group">
+                        <label for="branch">Branch <span class="required">*</span></label>
+                        <select id="branch" required onchange="validateForm()">
+                            <option value="">-- Select Branch --</option>
+                        </select>
+                    </div>
+                    
                     <div class="form-row">
                         <div class="form-group">
                             <label for="device-name">Device Name</label>
@@ -631,6 +638,7 @@
         document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('log-date').valueAsDate = new Date();
             await loadCurrentUser();
+            await loadBranches();
             await loadReferences();
             
             // Check for edit mode
@@ -640,6 +648,30 @@
                 await loadEditData();
             }
         });
+        
+        async function loadBranches() {
+            try {
+                const res = await fetch('/equipment-calibration/api/settings?_=' + Date.now(), {
+                    cache: 'no-store'
+                });
+                const settings = await res.json();
+                
+                const branchSelect = document.getElementById('branch');
+                const branchesStr = settings.branches || '';
+                
+                if (branchesStr) {
+                    const branches = branchesStr.split(',').map(b => b.trim()).filter(b => b);
+                    branches.forEach(branch => {
+                        const option = document.createElement('option');
+                        option.value = branch;
+                        option.textContent = branch;
+                        branchSelect.appendChild(option);
+                    });
+                }
+            } catch (e) {
+                console.error('Error loading branches:', e);
+            }
+        }
         
         async function loadCurrentUser() {
             try {
@@ -706,6 +738,11 @@
                     document.getElementById('tested-value').value = record.measured_value || '';
                     document.getElementById('remarks').value = record.remarks || '';
                     document.getElementById('corrective-action').value = record.corrective_action || '';
+                    
+                    // Set branch if exists
+                    if (editData.session.branch) {
+                        document.getElementById('branch').value = editData.session.branch;
+                    }
                     
                     // Trigger calculations
                     calculateDifference();
@@ -881,6 +918,7 @@
         }
         
         function validateForm() {
+            const branch = document.getElementById('branch').value;
             const logDate = document.getElementById('log-date').value;
             const itemName = document.getElementById('item-name').value;
             const unit = document.getElementById('unit-measurement').value;
@@ -897,7 +935,7 @@
             const refValueInput = document.getElementById('reference-value');
             const referenceValueValid = refValueInput.readOnly || (!refValueInput.readOnly && referenceValue.trim() !== '');
             
-            const isValid = selectedReference && logDate && itemName && unit && testedValue && filledBy && correctiveActionValid && referenceValueValid;
+            const isValid = selectedReference && branch && logDate && itemName && unit && testedValue && filledBy && correctiveActionValid && referenceValueValid;
             document.getElementById('submit-btn').disabled = !isValid;
         }
         
@@ -970,6 +1008,7 @@
                     const data = {
                         calibration_date: document.getElementById('log-date').value,
                         shift: 'N/A',
+                        branch: document.getElementById('branch').value,
                         records: [{
                             reference_id: selectedReference.id,
                             item_name: document.getElementById('item-name').value,
@@ -1028,6 +1067,7 @@
         
         function resetForm() {
             document.getElementById('equipment-select').value = '';
+            document.getElementById('branch').value = '';
             document.getElementById('calibration-form-card').style.display = 'none';
             document.getElementById('submit-bar').style.display = 'none';
             document.getElementById('log-date').valueAsDate = new Date();

@@ -38,6 +38,7 @@ CREATE TABLE CalibrationSessions (
     document_number NVARCHAR(50) UNIQUE,
     calibration_date DATE NOT NULL,
     shift NVARCHAR(20),
+    branch NVARCHAR(100),
     calibrated_by INT, -- user id
     verified BIT DEFAULT 0,
     verified_by INT,
@@ -52,6 +53,10 @@ IF NOT EXISTS (SELECT * FROM sys.foreign_keys WHERE name = 'FK_CalibrationRecord
 ALTER TABLE CalibrationRecords
 ADD CONSTRAINT FK_CalibrationRecords_Session
 FOREIGN KEY (session_id) REFERENCES CalibrationSessions(id);
+
+-- Add branch column if it doesn't exist (migration for existing tables)
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('CalibrationSessions') AND name = 'branch')
+ALTER TABLE CalibrationSessions ADD branch NVARCHAR(100);
 
 -- Calibration Settings
 IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='CalibrationSettings' AND xtype='U')

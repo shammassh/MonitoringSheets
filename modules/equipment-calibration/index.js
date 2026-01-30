@@ -256,7 +256,7 @@ router.delete('/api/references/:id', async (req, res) => {
 // Submit batch calibration records
 router.post('/api/calibrations/batch', async (req, res) => {
     try {
-        const { calibration_date, shift, records } = req.body;
+        const { calibration_date, shift, branch, records } = req.body;
         const user = req.currentUser || { email: 'unknown', displayName: 'Unknown', name: 'Unknown' };
         
         if (!calibration_date || !shift || !records || records.length === 0) {
@@ -290,12 +290,13 @@ router.post('/api/calibrations/batch', async (req, res) => {
         const sessionResult = await pool.request()
             .input('calibration_date', sql.Date, calibration_date)
             .input('shift', sql.NVarChar, shift)
+            .input('branch', sql.NVarChar, branch || null)
             .input('document_number', sql.NVarChar, document_number)
             .input('calibrated_by', sql.NVarChar, user.displayName || user.name || user.email)
             .query(`
-                INSERT INTO CalibrationSessions (calibration_date, shift, document_number, calibrated_by)
+                INSERT INTO CalibrationSessions (calibration_date, shift, branch, document_number, calibrated_by)
                 OUTPUT INSERTED.id
-                VALUES (@calibration_date, @shift, @document_number, @calibrated_by)
+                VALUES (@calibration_date, @shift, @branch, @document_number, @calibrated_by)
             `);
         
         const session_id = sessionResult.recordset[0].id;
