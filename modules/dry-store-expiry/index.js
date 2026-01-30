@@ -72,6 +72,57 @@ router.get('/uploads/:filename', (req, res) => {
     }
 });
 
+// ==========================================
+// API Routes - Settings
+// ==========================================
+
+// Get settings
+router.get('/api/settings', async (req, res) => {
+    try {
+        // Prevent caching
+        res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+        res.set('Expires', '-1');
+        res.set('Pragma', 'no-cache');
+        
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .query(`SELECT * FROM DryStoreExpirySettings`);
+        
+        const settings = {};
+        result.recordset.forEach(row => {
+            settings[row.setting_key] = row.setting_value;
+        });
+        res.json(settings);
+    } catch (err) {
+        console.error('Error fetching settings:', err);
+        res.status(500).json({ error: 'Failed to fetch settings' });
+    }
+});
+
+// Update settings
+router.put('/api/settings', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        
+        for (const [key, value] of Object.entries(req.body)) {
+            await pool.request()
+                .input('key', sql.NVarChar, key)
+                .input('value', sql.NVarChar, value)
+                .query(`
+                    IF EXISTS (SELECT 1 FROM DryStoreExpirySettings WHERE setting_key = @key)
+                        UPDATE DryStoreExpirySettings SET setting_value = @value, updated_at = GETDATE() WHERE setting_key = @key
+                    ELSE
+                        INSERT INTO DryStoreExpirySettings (setting_key, setting_value) VALUES (@key, @value)
+                `);
+        }
+        
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Error updating settings:', err);
+        res.status(500).json({ error: 'Failed to update settings' });
+    }
+});
+
 // API: Get sections
 router.get('/api/sections', async (req, res) => {
     try {

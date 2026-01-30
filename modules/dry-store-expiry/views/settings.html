@@ -280,31 +280,24 @@
     <div class="container">
         <div class="settings-card">
             <h2 class="card-title">
-                <i class="fas fa-warehouse"></i>
-                Manage Sections
+                <i class="fas fa-building"></i>
+                Manage Branches
             </h2>
-            <p class="card-subtitle">Add or remove storage sections for expiry checks</p>
+            <p class="card-subtitle">Add or remove branch locations</p>
 
-            <div id="settingsContent">
-                <div class="add-form">
-                    <input type="text" id="newSectionName" placeholder="Enter new section name...">
-                    <button class="btn btn-primary" onclick="addSection()">
-                        <i class="fas fa-plus"></i>
-                        Add Section
-                    </button>
+            <div id="branchesContent">
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">Branches (one per line)</label>
+                    <textarea id="branchesTextarea" rows="6" style="width: 100%; padding: 0.875rem 1rem; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem; font-family: inherit;"></textarea>
                 </div>
-
-                <div class="sections-list" id="sectionsList">
-                    <!-- Sections loaded dynamically -->
-                </div>
-            </div>
-
-            <div id="accessDenied" class="access-denied" style="display: none;">
-                <i class="fas fa-lock"></i>
-                <h3>Access Denied</h3>
-                <p>Only Administrators can manage settings.</p>
+                <button class="btn btn-primary" onclick="saveBranches()" style="margin-bottom: 2rem;">
+                    <i class="fas fa-save"></i>
+                    Save Branches
+                </button>
             </div>
         </div>
+
+
     </div>
 
     <div class="toast" id="toast">
@@ -313,7 +306,6 @@
     </div>
 
     <script>
-        let sections = [];
         let currentUser = {};
 
         // Initialize
@@ -322,18 +314,38 @@
             
             // Check access
             if (currentUser.role !== 'Admin') {
-                document.getElementById('settingsContent').style.display = 'none';
-                document.getElementById('accessDenied').style.display = 'block';
+                document.getElementById('branchesContent').style.display = 'none';
                 return;
             }
             
-            await loadSections();
-            
-            // Enter key handler
-            document.getElementById('newSectionName').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') addSection();
-            });
+            await loadBranches();
         });
+
+        async function loadBranches() {
+            try {
+                const response = await fetch('/dry-store-expiry/api/settings');
+                const settings = await response.json();
+                document.getElementById('branchesTextarea').value = settings.branches || '';
+            } catch (error) {
+                console.error('Error loading branches:', error);
+            }
+        }
+
+        async function saveBranches() {
+            try {
+                const branches = document.getElementById('branchesTextarea').value;
+                const response = await fetch('/dry-store-expiry/api/settings', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ branches })
+                });
+                if (!response.ok) throw new Error('Failed to save');
+                showToast('Branches saved successfully!', 'success');
+            } catch (error) {
+                console.error('Error saving branches:', error);
+                showToast('Failed to save branches', 'error');
+            }
+        }
 
         async function loadCurrentUser() {
             try {
@@ -341,94 +353,6 @@
                 currentUser = await response.json();
             } catch (error) {
                 console.error('Error loading current user:', error);
-            }
-        }
-
-        async function loadSections() {
-            try {
-                const response = await fetch('/dry-store-expiry/api/sections');
-                sections = await response.json();
-                renderSections();
-            } catch (error) {
-                console.error('Error loading sections:', error);
-                showToast('Failed to load sections', 'error');
-            }
-        }
-
-        function renderSections() {
-            const container = document.getElementById('sectionsList');
-            
-            if (sections.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-warehouse"></i>
-                        <p>No sections defined yet. Add your first section above.</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            container.innerHTML = sections.map(section => `
-                <div class="section-item">
-                    <span class="section-name">
-                        <i class="fas fa-warehouse"></i>
-                        ${section.name}
-                    </span>
-                    <button class="btn-delete" onclick="deleteSection(${section.id}, '${section.name}')">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            `).join('');
-        }
-
-        async function addSection() {
-            const input = document.getElementById('newSectionName');
-            const name = input.value.trim();
-            
-            if (!name) {
-                showToast('Please enter a section name', 'error');
-                return;
-            }
-            
-            // Check for duplicate
-            if (sections.some(s => s.name.toLowerCase() === name.toLowerCase())) {
-                showToast('Section already exists', 'error');
-                return;
-            }
-            
-            try {
-                const response = await fetch('/dry-store-expiry/api/sections', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name })
-                });
-                
-                if (!response.ok) throw new Error('Failed to add section');
-                
-                input.value = '';
-                await loadSections();
-                showToast('Section added successfully!', 'success');
-            } catch (error) {
-                console.error('Error adding section:', error);
-                showToast('Failed to add section', 'error');
-            }
-        }
-
-        async function deleteSection(id, name) {
-            if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
-            
-            try {
-                const response = await fetch(`/dry-store-expiry/api/sections/${id}`, {
-                    method: 'DELETE'
-                });
-                
-                if (!response.ok) throw new Error('Failed to delete section');
-                
-                await loadSections();
-                showToast('Section deleted successfully!', 'success');
-            } catch (error) {
-                console.error('Error deleting section:', error);
-                showToast('Failed to delete section', 'error');
             }
         }
 

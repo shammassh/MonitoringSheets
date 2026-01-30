@@ -458,14 +458,14 @@
 
                     <div class="form-group">
                         <label for="branch">Branch <span class="required">*</span></label>
-                        <input type="text" id="branch" placeholder="Enter branch/location" required>
+                        <select id="branch" required>
+                            <option value="">Select Branch</option>
+                        </select>
                     </div>
 
                     <div class="form-group">
                         <label for="section">Section <span class="required">*</span></label>
-                        <select id="section" required>
-                            <option value="">Select Section</option>
-                        </select>
+                        <input type="text" id="section" placeholder="Enter section" required>
                     </div>
 
                     <div class="form-group">
@@ -536,8 +536,8 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
             await Promise.all([
-                loadSections(),
-                loadCurrentUser()
+                loadCurrentUser(),
+                loadBranches()
             ]);
             
             // Set default date to today
@@ -554,20 +554,23 @@
             document.getElementById('logDate').addEventListener('change', updateAllStatuses);
         });
 
-        async function loadSections() {
+
+
+        async function loadBranches() {
             try {
-                const response = await fetch('/dry-store-expiry/api/sections');
-                const sections = await response.json();
+                const response = await fetch('/dry-store-expiry/api/settings?_=' + Date.now());
+                const settings = await response.json();
+                const branches = (settings.branches || '').split('\n').filter(b => b.trim());
                 
-                const select = document.getElementById('section');
-                sections.forEach(section => {
+                const select = document.getElementById('branch');
+                branches.forEach(branch => {
                     const option = document.createElement('option');
-                    option.value = section.name;
-                    option.textContent = section.name;
+                    option.value = branch.trim();
+                    option.textContent = branch.trim();
                     select.appendChild(option);
                 });
             } catch (error) {
-                console.error('Error loading sections:', error);
+                console.error('Error loading branches:', error);
             }
         }
 
