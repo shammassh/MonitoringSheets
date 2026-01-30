@@ -500,6 +500,9 @@
             
             // Load sections
             await loadSections();
+            
+            // Auto-load the form with today's date
+            await loadForm();
         });
         
         // Load time slots from database

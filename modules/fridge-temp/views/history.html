@@ -436,7 +436,10 @@
         // Load sections
         async function loadSections() {
             try {
-                const response = await fetch(`${API_BASE}/sections`);
+                const response = await fetch(`${API_BASE}/sections?_t=${Date.now()}`, {
+                    cache: 'no-store',
+                    headers: { 'Cache-Control': 'no-cache' }
+                });
                 const sections = await response.json();
                 
                 const select = document.getElementById('filter-section');
@@ -456,8 +459,12 @@
                 let url = `${API_BASE}/documents?`;
                 if (date) url += `date=${date}&`;
                 if (section) url += `section=${encodeURIComponent(section)}&`;
+                url += `_t=${Date.now()}`; // Cache buster
                 
-                const response = await fetch(url);
+                const response = await fetch(url, {
+                    cache: 'no-store',
+                    headers: { 'Cache-Control': 'no-cache' }
+                });
                 documents = await response.json();
                 renderDocuments();
             } catch (err) {

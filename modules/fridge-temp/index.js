@@ -430,7 +430,7 @@ router.post('/api/documents', async (req, res) => {
             
             // Calculate status for each time slot
             const statuses = {};
-            TIME_SLOTS.forEach(slot => {
+            DEFAULT_TIME_SLOTS.forEach(slot => {
                 statuses[`status_${slot}`] = calculateStatus(
                     reading[`temp_${slot}`], 
                     fridge.min_temp, 

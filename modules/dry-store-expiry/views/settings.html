@@ -312,8 +312,8 @@
         document.addEventListener('DOMContentLoaded', async () => {
             await loadCurrentUser();
             
-            // Check access
-            if (currentUser.role !== 'Admin') {
+            // Check access - Allow Admin and Super Auditor
+            if (currentUser.role !== 'Admin' && currentUser.role !== 'Super Auditor') {
                 document.getElementById('branchesContent').style.display = 'none';
                 return;
             }
