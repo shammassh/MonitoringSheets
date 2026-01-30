@@ -28,6 +28,7 @@ CREATE TABLE FoodSafetyVerificationSessions (
     id INT IDENTITY(1,1) PRIMARY KEY,
     document_number NVARCHAR(50) NOT NULL UNIQUE,
     verification_date DATE NOT NULL,
+    branch NVARCHAR(100),
     verified_by NVARCHAR(255),
     verified BIT DEFAULT 0,
     verified_by_user NVARCHAR(255),
@@ -35,6 +36,11 @@ CREATE TABLE FoodSafetyVerificationSessions (
     created_at DATETIME DEFAULT GETDATE(),
     updated_at DATETIME DEFAULT GETDATE()
 );
+GO
+
+-- Add branch column if it doesn't exist (migration for existing tables)
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('FoodSafetyVerificationSessions') AND name = 'branch')
+ALTER TABLE FoodSafetyVerificationSessions ADD branch NVARCHAR(100);
 GO
 
 -- Food Safety Verification Records Table

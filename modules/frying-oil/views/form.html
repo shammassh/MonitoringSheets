@@ -682,7 +682,7 @@
                 references.forEach(ref => {
                     const option = document.createElement('option');
                     option.value = ref.id;
-                    option.textContent = `${ref.name} (${ref.frequency})`;
+                    option.textContent = ref.name;
                     select.appendChild(option);
                 });
             } catch (e) {

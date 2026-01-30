@@ -610,10 +610,14 @@
         
         async function loadLocations() {
             try {
-                const res = await fetch('/dry-store/api/locations');
+                const res = await fetch('/dry-store/api/locations?_=' + Date.now(), { cache: 'no-store' });
                 const locations = await res.json();
                 
                 const select = document.getElementById('dry-store');
+                // Clear existing options except the first one
+                while (select.options.length > 1) {
+                    select.remove(1);
+                }
                 locations.forEach(loc => {
                     const option = document.createElement('option');
                     option.value = loc.name;

@@ -52,6 +52,10 @@ router.get('/schedule', (req, res) => {
     res.sendFile(path.join(__dirname, 'views', 'schedule.html'));
 });
 
+router.get('/settings', (req, res) => {
+    res.sendFile(path.join(__dirname, 'views', 'settings.html'));
+});
+
 // ==========================================
 // API Routes - Current User
 // ==========================================
@@ -61,6 +65,52 @@ router.get('/api/me', (req, res) => {
         res.json(req.currentUser);
     } else {
         res.status(401).json({ error: 'Not authenticated' });
+    }
+});
+
+// ==========================================
+// API Routes - Settings
+// ==========================================
+
+// Get settings
+router.get('/api/settings', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .query(`SELECT * FROM FoodSafetySettings`);
+        
+        const settings = {};
+        result.recordset.forEach(row => {
+            settings[row.setting_key] = row.setting_value;
+        });
+        res.json(settings);
+    } catch (err) {
+        console.error('Error fetching settings:', err);
+        res.status(500).json({ error: 'Failed to fetch settings' });
+    }
+});
+
+// Update settings
+router.put('/api/settings', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        
+        for (const [key, value] of Object.entries(req.body)) {
+            await pool.request()
+                .input('key', sql.NVarChar, key)
+                .input('value', sql.NVarChar, value)
+                .query(`
+                    IF EXISTS (SELECT 1 FROM FoodSafetySettings WHERE setting_key = @key)
+                        UPDATE FoodSafetySettings SET setting_value = @value, updated_at = GETDATE() WHERE setting_key = @key
+                    ELSE
+                        INSERT INTO FoodSafetySettings (setting_key, setting_value) VALUES (@key, @value)
+                `);
+        }
+        
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Error updating settings:', err);
+        res.status(500).json({ error: 'Failed to update settings' });
     }
 });
 
@@ -211,7 +261,7 @@ router.get('/api/verifications', async (req, res) => {
             request.input('verified', sql.Bit, verified === '1');
         }
         
-        query += ` GROUP BY s.id, s.document_number, s.verification_date, s.verified_by, s.verified, s.verified_by_user, s.verified_at, s.created_at, s.updated_at`;
+        query += ` GROUP BY s.id, s.document_number, s.verification_date, s.branch, s.verified_by, s.verified, s.verified_by_user, s.verified_at, s.created_at, s.updated_at`;
         query += ` ORDER BY s.verification_date DESC, s.id DESC`;
         
         const result = await request.query(query);
@@ -258,7 +308,7 @@ router.get('/api/verifications/:id', async (req, res) => {
 // Create verification batch
 router.post('/api/verifications/batch', async (req, res) => {
     try {
-        const { verification_date, records } = req.body;
+        const { verification_date, branch, records } = req.body;
         const verifiedBy = req.currentUser?.displayName || req.currentUser?.name || 'Unknown';
         
         const pool = await sql.connect(dbConfig);
@@ -278,11 +328,12 @@ router.post('/api/verifications/batch', async (req, res) => {
         const sessionResult = await pool.request()
             .input('document_number', sql.NVarChar, documentNumber)
             .input('verification_date', sql.Date, verification_date)
+            .input('branch', sql.NVarChar, branch || null)
             .input('verified_by', sql.NVarChar, verifiedBy)
             .query(`
-                INSERT INTO FoodSafetyVerificationSessions (document_number, verification_date, verified_by)
+                INSERT INTO FoodSafetyVerificationSessions (document_number, verification_date, branch, verified_by)
                 OUTPUT INSERTED.*
-                VALUES (@document_number, @verification_date, @verified_by)
+                VALUES (@document_number, @verification_date, @branch, @verified_by)
             `);
         
         const sessionId = sessionResult.recordset[0].id;

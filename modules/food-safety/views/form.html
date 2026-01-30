@@ -432,7 +432,7 @@
     </header>
     
     <div class="container">
-        <!-- Procedure Selection -->
+        <!-- Branch & Procedure Selection -->
         <div class="card">
             <div class="card-header">
                 <h2>
@@ -440,15 +440,23 @@
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                         <polyline points="14 2 14 8 20 8"/>
                     </svg>
-                    Select Procedure
+                    Select Branch & Procedure
                 </h2>
             </div>
             <div class="card-body">
-                <div class="form-group">
-                    <label for="procedure-select">Procedure <span class="required">*</span></label>
-                    <select id="procedure-select" onchange="onProcedureChange()">
-                        <option value="">-- Select Procedure --</option>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="branch">Branch <span class="required">*</span></label>
+                        <select id="branch" required onchange="validateForm()">
+                            <option value="">-- Select Branch --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="procedure-select">Procedure <span class="required">*</span></label>
+                        <select id="procedure-select" onchange="onProcedureChange()">
+                            <option value="">-- Select Procedure --</option>
                     </select>
+                    </div>
                 </div>
             </div>
         </div>
@@ -624,6 +632,7 @@
         document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('log-date').valueAsDate = new Date();
             await loadCurrentUser();
+            await loadBranches();
             await loadReferences();
             
             // Check for edit mode
@@ -633,6 +642,30 @@
                 await loadEditData();
             }
         });
+        
+        async function loadBranches() {
+            try {
+                const res = await fetch('/food-safety/api/settings?_=' + Date.now(), {
+                    cache: 'no-store'
+                });
+                const settings = await res.json();
+                
+                const branchSelect = document.getElementById('branch');
+                const branchesStr = settings.branches || '';
+                
+                if (branchesStr) {
+                    const branches = branchesStr.split(',').map(b => b.trim()).filter(b => b);
+                    branches.forEach(branch => {
+                        const option = document.createElement('option');
+                        option.value = branch;
+                        option.textContent = branch;
+                        branchSelect.appendChild(option);
+                    });
+                }
+            } catch (e) {
+                console.error('Error loading branches:', e);
+            }
+        }
         
         async function loadCurrentUser() {
             try {
@@ -695,6 +728,11 @@
                     document.getElementById('test-value').value = record.test_value || '';
                     document.getElementById('comments').value = record.comments || '';
                     document.getElementById('corrective-action').value = record.corrective_action || '';
+                    
+                    // Set branch if exists
+                    if (editData.session.branch) {
+                        document.getElementById('branch').value = editData.session.branch;
+                    }
                     
                     // Recalculate difference which will auto-set status
                     calculateDifference();
@@ -914,6 +952,7 @@
         }
         
         function validateForm() {
+            const branch = document.getElementById('branch').value;
             const logDate = document.getElementById('log-date').value;
             const testValue = document.getElementById('test-value').value;
             const refValue = document.getElementById('reference-value').value;
@@ -924,7 +963,7 @@
             const correctiveActionValid = !isFailing || (isFailing && correctiveAction.trim() !== '');
             
             // Status is auto-calculated, so just need test value and reference value
-            const isValid = selectedReference && logDate && testValue && refValue && selectedStatus && filledBy && correctiveActionValid;
+            const isValid = selectedReference && branch && logDate && testValue && refValue && selectedStatus && filledBy && correctiveActionValid;
             document.getElementById('submit-btn').disabled = !isValid;
         }
         
@@ -983,6 +1022,7 @@
                 } else {
                     const data = {
                         verification_date: document.getElementById('log-date').value,
+                        branch: document.getElementById('branch').value,
                         records: [{
                             reference_id: selectedReference.id,
                             procedure_name: selectedReference.name,
@@ -1041,6 +1081,7 @@
         }
         
         function resetForm() {
+            document.getElementById('branch').value = '';
             document.getElementById('procedure-select').value = '';
             document.getElementById('verification-form-card').style.display = 'none';
             document.getElementById('submit-bar').style.display = 'none';
