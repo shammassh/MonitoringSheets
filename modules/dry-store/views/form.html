@@ -510,8 +510,54 @@
         let currentUser = null;
         let editingId = null;
         
+        function updateTimeRestrictions() {
+            const selectedDate = document.getElementById('reading-date').value;
+            const today = new Date().toISOString().split('T')[0];
+            const timeAm = document.getElementById('time-am');
+            const timePm = document.getElementById('time-pm');
+            
+            if (selectedDate === today) {
+                const now = new Date();
+                const currentTime = now.toTimeString().slice(0, 5);
+                timeAm.min = currentTime;
+                timePm.min = currentTime;
+                
+                // Add change listeners to validate time
+                timeAm.addEventListener('change', validateTime);
+                timePm.addEventListener('change', validateTime);
+            } else {
+                timeAm.removeAttribute('min');
+                timePm.removeAttribute('min');
+                timeAm.removeEventListener('change', validateTime);
+                timePm.removeEventListener('change', validateTime);
+            }
+        }
+        
+        function validateTime(event) {
+            const selectedDate = document.getElementById('reading-date').value;
+            const today = new Date().toISOString().split('T')[0];
+            
+            if (selectedDate === today) {
+                const now = new Date();
+                const currentTime = now.toTimeString().slice(0, 5);
+                const enteredTime = event.target.value;
+                
+                if (enteredTime && enteredTime < currentTime) {
+                    alert('Cannot select a past time for today. Please select current or future time.');
+                    event.target.value = '';
+                }
+            }
+        }
+        
         document.addEventListener('DOMContentLoaded', async () => {
-            document.getElementById('reading-date').value = new Date().toISOString().split('T')[0];
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('reading-date').value = today;
+            document.getElementById('reading-date').min = today;
+            
+            // Update time restriction when date changes
+            document.getElementById('reading-date').addEventListener('change', updateTimeRestrictions);
+            updateTimeRestrictions();
+            
             await loadSettings();
             await loadBranches();
             await loadLocations();
@@ -643,6 +689,7 @@
             const input = document.getElementById(`${type}-${period}`);
             const statusBadge = document.getElementById(`${type}-${period}-status`);
             const caDiv = document.getElementById(`${type}-${period}-ca`);
+            const caTextarea = document.getElementById(`${type}-${period}-corrective`);
             
             const value = parseFloat(input.value);
             const max = type === 'temp' ? settings.temp_max : settings.humidity_max;
@@ -651,6 +698,7 @@
                 statusBadge.textContent = 'Pass';
                 statusBadge.className = 'status-badge pass';
                 caDiv.style.display = 'none';
+                caTextarea.removeAttribute('required');
                 return;
             }
             
@@ -658,10 +706,12 @@
                 statusBadge.textContent = 'Fail';
                 statusBadge.className = 'status-badge fail';
                 caDiv.style.display = 'block';
+                caTextarea.setAttribute('required', 'required');
             } else {
                 statusBadge.textContent = 'Pass';
                 statusBadge.className = 'status-badge pass';
                 caDiv.style.display = 'none';
+                caTextarea.removeAttribute('required');
             }
         }
         
@@ -695,6 +745,28 @@
             }
             if (!isNaN(humidityPm) && (humidityPm < 0 || humidityPm > 100)) {
                 showToast('PM Humidity must be between 0% and 100%', 'error');
+                return;
+            }
+            
+            // Check if corrective actions are required and filled
+            if (document.getElementById('temp-am-status').textContent === 'Fail' && 
+                !document.getElementById('temp-am-corrective').value.trim()) {
+                showToast('Please provide corrective action for AM Temperature', 'error');
+                return;
+            }
+            if (document.getElementById('humidity-am-status').textContent === 'Fail' && 
+                !document.getElementById('humidity-am-corrective').value.trim()) {
+                showToast('Please provide corrective action for AM Humidity', 'error');
+                return;
+            }
+            if (document.getElementById('temp-pm-status').textContent === 'Fail' && 
+                !document.getElementById('temp-pm-corrective').value.trim()) {
+                showToast('Please provide corrective action for PM Temperature', 'error');
+                return;
+            }
+            if (document.getElementById('humidity-pm-status').textContent === 'Fail' && 
+                !document.getElementById('humidity-pm-corrective').value.trim()) {
+                showToast('Please provide corrective action for PM Humidity', 'error');
                 return;
             }
             
