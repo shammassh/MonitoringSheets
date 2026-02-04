@@ -227,7 +227,7 @@ router.get('/api/documents/:id', async (req, res) => {
 // Create document with checked items
 router.post('/api/documents', async (req, res) => {
     try {
-        const { log_date, check_time, concentration, filled_by, comments, peracetic_acid_1,
+        const { log_date, branch, check_time, concentration, filled_by, comments, peracetic_acid_1,
                 log_date_2, check_time_2, concentration_2, filled_by_2, comments_2, peracetic_acid_2, checked_items } = req.body;
         const pool = await getPool();
         
@@ -243,6 +243,7 @@ router.post('/api/documents', async (req, res) => {
         const insertResult = await pool.request()
             .input('document_number', sql.NVarChar, documentNumber)
             .input('log_date', sql.Date, log_date)
+            .input('branch', sql.NVarChar, branch || null)
             .input('check_time', sql.NVarChar, check_time)
             .input('concentration', sql.NVarChar, concentration)
             .input('filled_by', sql.NVarChar, filled_by)
@@ -255,9 +256,9 @@ router.post('/api/documents', async (req, res) => {
             .input('comments_2', sql.NVarChar, comments_2 || null)
             .input('peracetic_acid_2', sql.Bit, peracetic_acid_2 ? 1 : 0)
             .query(`INSERT INTO VegFruitWashDocuments 
-                    (document_number, log_date, check_time, concentration, filled_by, comments, peracetic_acid_1, log_date_2, check_time_2, concentration_2, filled_by_2, comments_2, peracetic_acid_2) 
+                    (document_number, log_date, branch, check_time, concentration, filled_by, comments, peracetic_acid_1, log_date_2, check_time_2, concentration_2, filled_by_2, comments_2, peracetic_acid_2) 
                     OUTPUT INSERTED.id 
-                    VALUES (@document_number, @log_date, @check_time, @concentration, @filled_by, @comments, @peracetic_acid_1, @log_date_2, @check_time_2, @concentration_2, @filled_by_2, @comments_2, @peracetic_acid_2)`);
+                    VALUES (@document_number, @log_date, @branch, @check_time, @concentration, @filled_by, @comments, @peracetic_acid_1, @log_date_2, @check_time_2, @concentration_2, @filled_by_2, @comments_2, @peracetic_acid_2)`);
         
         const documentId = insertResult.recordset[0].id;
         
@@ -344,7 +345,7 @@ router.post('/api/documents/:id/verify', async (req, res) => {
 // Update document (for edit)
 router.put('/api/documents/:id', async (req, res) => {
     try {
-        const { log_date, check_time, concentration, comments, peracetic_acid_1,
+        const { log_date, branch, check_time, concentration, comments, peracetic_acid_1,
                 log_date_2, check_time_2, concentration_2, filled_by_2, comments_2, peracetic_acid_2, checked_items } = req.body;
         const pool = await getPool();
         
@@ -361,6 +362,7 @@ router.put('/api/documents/:id', async (req, res) => {
         await pool.request()
             .input('id', sql.Int, req.params.id)
             .input('log_date', sql.Date, log_date)
+            .input('branch', sql.NVarChar, branch || null)
             .input('check_time', sql.NVarChar, check_time)
             .input('concentration', sql.NVarChar, concentration)
             .input('comments', sql.NVarChar, comments || null)
@@ -373,6 +375,7 @@ router.put('/api/documents/:id', async (req, res) => {
             .input('peracetic_acid_2', sql.Bit, peracetic_acid_2 ? 1 : 0)
             .query(`UPDATE VegFruitWashDocuments SET 
                     log_date = @log_date,
+                    branch = @branch,
                     check_time = @check_time, 
                     concentration = @concentration, 
                     comments = @comments,

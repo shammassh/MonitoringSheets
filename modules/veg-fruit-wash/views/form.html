@@ -316,6 +316,16 @@
                     <input type="date" id="log-date" required>
                 </div>
                 <div class="form-group">
+                    <label>Branch *</label>
+                    <select id="branch" required>
+                        <option value="">Select Branch</option>
+                        <option value="Dekwaneh CK">Dekwaneh CK</option>
+                        <option value="BHOSP CP">BHOSP CP</option>
+                        <option value="Pastry CP">Pastry CP</option>
+                        <option value="Hazmieh CP">Hazmieh CP</option>
+                    </select>
+                </div>
+                <div class="form-group">
                     <label>Soaking Duration (in sec) * <span style="font-size: 0.75rem; color: #6b7280;">(60-90 sec)</span></label>
                     <input type="number" id="check-time" placeholder="60-90" min="1" required onchange="checkLimits1()">
                     <span id="check-time-warning" class="limit-warning" style="display: none;"></span>
@@ -471,6 +481,7 @@
                 
                 // Fill form fields
                 document.getElementById('log-date').value = doc.log_date.split('T')[0];
+                document.getElementById('branch').value = doc.branch || '';
                 document.getElementById('check-time').value = doc.check_time;
                 document.getElementById('concentration').value = doc.concentration;
                 document.getElementById('filled-by').value = doc.filled_by;
@@ -680,6 +691,7 @@
         // Save check
         async function saveCheck() {
             const logDate = document.getElementById('log-date').value;
+            const branch = document.getElementById('branch').value;
             const checkTime = document.getElementById('check-time').value;
             const concentration = document.getElementById('concentration').value.trim();
             const comments = document.getElementById('comments').value.trim();
@@ -693,7 +705,7 @@
             const comments2 = document.getElementById('comments-2').value.trim();
             const peraceticAcid2 = document.getElementById('peracetic-acid-2').checked;
             
-            if (!logDate || !checkTime || !concentration) {
+            if (!logDate || !branch || !checkTime || !concentration) {
                 showToast('Please fill all required fields', true);
                 return;
             }
@@ -742,6 +754,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         log_date: logDate,
+                        branch: branch,
                         check_time: checkTime,
                         concentration: concentration,
                         filled_by: currentUser?.name || 'Unknown',
