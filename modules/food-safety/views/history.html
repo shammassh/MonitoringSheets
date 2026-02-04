@@ -680,6 +680,7 @@
                                 <span class="summary-item ${statusClass}">${statusText}</span>
                                 <span class="summary-item">${v.record_count} record(s)</span>
                             </div>
+                            ${v.procedures ? `<div class="verified-by-text"><strong>Procedures:</strong> ${v.procedures}</div>` : ''}
                             <div class="verified-by-text">Verified by: ${v.verified_by || 'Unknown'}</div>
                         </div>
                         <div class="history-footer">
