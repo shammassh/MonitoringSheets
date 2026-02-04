@@ -408,8 +408,8 @@
 
                 <div class="form-grid">
                     <div class="form-group full-width">
-                        <label for="shelfLife">Correct and Clear Shelf Life</label>
-                        <select id="shelfLife">
+                        <label for="shelfLife">Correct and Clear Shelf Life <span class="required">*</span></label>
+                        <select id="shelfLife" required>
                             <option value="">-- Select --</option>
                             <option value="Yes">Yes</option>
                             <option value="No">No</option>
@@ -456,7 +456,9 @@
             ]);
             
             // Set default date to today
-            document.getElementById('logDate').value = new Date().toISOString().split('T')[0];
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('logDate').value = today;
+            document.getElementById('logDate').min = today;
             
             // Check for edit mode
             const urlParams = new URLSearchParams(window.location.search);
