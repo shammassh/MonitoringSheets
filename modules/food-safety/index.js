@@ -240,11 +240,12 @@ router.get('/api/verifications', async (req, res) => {
                 s.*,
                 COUNT(r.id) as record_count,
                 CASE WHEN SUM(CASE WHEN r.status = 'Fail' THEN 1 ELSE 0 END) > 0 THEN 1 ELSE 0 END as has_failures,
-                (
-                    SELECT STRING_AGG(DISTINCT procedure_name, ', ')
+                STUFF((
+                    SELECT DISTINCT ', ' + procedure_name
                     FROM FoodSafetyVerificationRecords
-                    WHERE session_id = s.id
-                ) as procedures
+                    WHERE session_id = s.id AND procedure_name IS NOT NULL
+                    FOR XML PATH(''), TYPE
+                ).value('.', 'NVARCHAR(MAX)'), 1, 2, '') as procedures
             FROM FoodSafetyVerificationSessions s
             LEFT JOIN FoodSafetyVerificationRecords r ON s.id = r.session_id
             WHERE 1=1
