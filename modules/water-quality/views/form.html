@@ -844,11 +844,13 @@
                         window.location.href = '/water-quality/history';
                     }, 1000);
                 } else {
-                    throw new Error('Failed to save');
+                    const errorData = await res.json().catch(() => ({}));
+                    const errorMsg = errorData.error || errorData.message || 'Failed to save';
+                    throw new Error(errorMsg);
                 }
             } catch (e) {
                 console.error('Submit error:', e);
-                showToast('Failed to save reading', 'error');
+                showToast(e.message || 'Failed to save reading', 'error');
                 document.getElementById('submit-btn').disabled = false;
             }
         }
