@@ -146,6 +146,8 @@
         
         .table-scroll {
             overflow-x: auto;
+            overflow-y: auto;
+            max-height: calc(100vh - 280px);
         }
         
         .checklist-table {
@@ -164,6 +166,7 @@
             border-bottom: 2px solid #e5e7eb;
             position: sticky;
             top: 0;
+            z-index: 10;
         }
         
         .checklist-table th.employee-col {
