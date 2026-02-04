@@ -535,7 +535,9 @@
         let editingId = null;
         
         document.addEventListener('DOMContentLoaded', async () => {
-            document.getElementById('reading-date').value = new Date().toISOString().split('T')[0];
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('reading-date').value = today;
+            document.getElementById('reading-date').min = today;
             await loadSettings();
             await loadSections();
             await loadCurrentUser();

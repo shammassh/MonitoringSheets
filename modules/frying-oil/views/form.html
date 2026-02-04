@@ -582,7 +582,9 @@
         let editData = null;
         
         document.addEventListener('DOMContentLoaded', async () => {
+            const today = new Date().toISOString().split('T')[0];
             document.getElementById('log-date').valueAsDate = new Date();
+            document.getElementById('log-date').min = today;
             await loadCurrentUser();
             await loadReferences();
             
