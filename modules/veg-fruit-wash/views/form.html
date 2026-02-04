@@ -436,8 +436,11 @@
             }
             
             // Set today's date for both sections
+            const today = new Date().toISOString().split('T')[0];
             document.getElementById('log-date').valueAsDate = new Date();
+            document.getElementById('log-date').min = today;
             document.getElementById('log-date-2').valueAsDate = new Date();
+            document.getElementById('log-date-2').min = today;
             
             // Load current user
             try {
