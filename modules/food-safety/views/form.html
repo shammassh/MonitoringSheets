@@ -866,6 +866,7 @@
             const testValue = document.getElementById('test-value').value;
             const refValue = document.getElementById('reference-value').value;
             const acceptError = document.getElementById('accept-error').value;
+            const procedureName = selectedReference ? selectedReference.name.toLowerCase() : '';
             
             // Try to parse numeric values
             const testNum = parseFloat(testValue);
@@ -887,20 +888,43 @@
                 const indicator = document.getElementById('diff-indicator');
                 
                 let isPass = true;
-                if (errorMatch) {
+                let indicatorMessage = '';
+                
+                // Special handling for Cooking and Cooling procedures
+                if (procedureName.includes('cooking')) {
+                    // Cooking should be ≥ reference value (e.g., ≥ 75°C)
+                    isPass = testNum >= refNum;
+                    if (isPass) {
+                        indicatorMessage = '✓ Temperature is sufficient (≥ ' + refNum + '°C)';
+                        indicator.className = 'diff-indicator within';
+                    } else {
+                        indicatorMessage = '✗ Temperature too low (must be ≥ ' + refNum + '°C)';
+                        indicator.className = 'diff-indicator outside';
+                    }
+                } else if (procedureName.includes('cooling')) {
+                    // Cooling should be ≤ reference value (e.g., ≤ 20°C)
+                    isPass = testNum <= refNum;
+                    if (isPass) {
+                        indicatorMessage = '✓ Temperature is acceptable (≤ ' + refNum + '°C)';
+                        indicator.className = 'diff-indicator within';
+                    } else {
+                        indicatorMessage = '✗ Temperature too high (must be ≤ ' + refNum + '°C)';
+                        indicator.className = 'diff-indicator outside';
+                    }
+                } else if (errorMatch) {
                     const errorVal = parseFloat(errorMatch[1]);
                     isPass = Math.abs(diff) <= errorVal;
                     
                     if (isPass) {
-                        indicator.textContent = '✓ Within acceptable range';
+                        indicatorMessage = '✓ Within acceptable range';
                         indicator.className = 'diff-indicator within';
                     } else {
-                        indicator.textContent = '✗ Outside acceptable range';
+                        indicatorMessage = '✗ Outside acceptable range';
                         indicator.className = 'diff-indicator outside';
                     }
-                } else {
-                    indicator.textContent = '';
                 }
+                
+                indicator.textContent = indicatorMessage;
                 
                 // Auto-set status
                 selectedStatus = isPass ? 'Pass' : 'Fail';
