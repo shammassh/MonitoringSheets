@@ -725,29 +725,6 @@
                 return;
             }
             
-            // Validate temperature and humidity ranges
-            const tempAm = parseFloat(document.getElementById('temp-am').value);
-            const tempPm = parseFloat(document.getElementById('temp-pm').value);
-            const humidityAm = parseFloat(document.getElementById('humidity-am').value);
-            const humidityPm = parseFloat(document.getElementById('humidity-pm').value);
-            
-            if (!isNaN(tempAm) && (tempAm < -50 || tempAm > 100)) {
-                showToast('AM Temperature must be between -50°C and 100°C', 'error');
-                return;
-            }
-            if (!isNaN(tempPm) && (tempPm < -50 || tempPm > 100)) {
-                showToast('PM Temperature must be between -50°C and 100°C', 'error');
-                return;
-            }
-            if (!isNaN(humidityAm) && (humidityAm < 0 || humidityAm > 100)) {
-                showToast('AM Humidity must be between 0% and 100%', 'error');
-                return;
-            }
-            if (!isNaN(humidityPm) && (humidityPm < 0 || humidityPm > 100)) {
-                showToast('PM Humidity must be between 0% and 100%', 'error');
-                return;
-            }
-            
             // Check if corrective actions are required and filled
             if (document.getElementById('temp-am-status').textContent === 'Fail' && 
                 !document.getElementById('temp-am-corrective').value.trim()) {
