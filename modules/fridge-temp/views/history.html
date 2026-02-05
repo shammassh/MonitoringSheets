@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Fridge Temperature History - FS Monitoring</title>
     <style>
         * {
@@ -179,6 +182,15 @@
         
         .btn-icon.delete:hover {
             background: #fee2e2;
+        }
+        
+        .btn-icon.edit {
+            background: #fef3c7;
+            color: #d97706;
+        }
+        
+        .btn-icon.edit:hover {
+            background: #fde68a;
         }
         
         .empty-state {
@@ -482,7 +494,13 @@
                 return;
             }
             
-            tbody.innerHTML = documents.map(doc => `
+            const today = new Date().toISOString().split('T')[0];
+            
+            tbody.innerHTML = documents.map(doc => {
+                const docDate = doc.log_date.split('T')[0];
+                const isToday = docDate === today;
+                
+                return `
                 <tr>
                     <td><strong>${escapeHtml(doc.document_number)}</strong></td>
                     <td>${formatDate(doc.log_date)}</td>
@@ -491,6 +509,14 @@
                     <td>${escapeHtml(doc.filled_by)}</td>
                     <td>
                         <div class="actions">
+                            ${isToday ? `
+                            <a href="/fridge-temp/form?date=${docDate}" class="btn-icon edit" title="Continue/Edit">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                </svg>
+                            </a>
+                            ` : ''}
                             <button class="btn-icon view" onclick="viewDocument(${doc.id})" title="View Details">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
@@ -505,7 +531,7 @@
                         </div>
                     </td>
                 </tr>
-            `).join('');
+            `}).join('');
         }
         
         // View document

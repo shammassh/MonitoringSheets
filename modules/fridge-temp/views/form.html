@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Fridge Temperature Recording - FS Monitoring</title>
     <style>
         * {
@@ -476,16 +479,99 @@
         
         let TIME_SLOTS = [];
         let TIME_LABELS = {};
+        let TIME_HOURS = {}; // Map slot to hour (0-23)
         let currentUser = null;
         let fridges = [];
         let existingReadings = {};
         let documentId = null;
         let documentNumber = null;
         
+        // Get today's date in local timezone (YYYY-MM-DD format)
+        function getLocalToday() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
+        // Time slot to hour mapping
+        const SLOT_HOURS = {
+            '01am': 1, '04am': 4, '07am': 7, '10am': 10,
+            '01pm': 13, '04pm': 16, '07pm': 19, '10pm': 22
+        };
+        
+        // Check if a time slot is within allowed window
+        // Rule: Can ONLY enter data FROM slot time TO slot time + 30 minutes
+        // After 30 minutes, the slot is disabled
+        function isSlotEditable(slot) {
+            const selectedDate = document.getElementById('log-date').value;
+            const today = getLocalToday();
+            
+            // If not today, no slots are editable (view only)
+            if (selectedDate !== today) {
+                return false;
+            }
+            
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentMinutes = now.getMinutes();
+            const currentTotalMinutes = currentHour * 60 + currentMinutes;
+            
+            const slotHour = SLOT_HOURS[slot];
+            if (slotHour === undefined) {
+                console.warn('Unknown slot:', slot);
+                return false;
+            }
+            
+            const slotStartMinutes = slotHour * 60;        // e.g., 1:00 AM = 60 minutes
+            const slotEndMinutes = slotStartMinutes + 30;  // e.g., 1:30 AM = 90 minutes
+            
+            // Can edit ONLY if: current time >= slot time AND current time <= slot time + 30 mins
+            return currentTotalMinutes >= slotStartMinutes && currentTotalMinutes <= slotEndMinutes;
+        }
+        
+        // Check if slot is past the 30-minute window (for warning purposes)
+        function isSlotLate(slot) {
+            const slotHour = SLOT_HOURS[slot];
+            const slotEndMinutes = slotHour * 60 + 30;
+            
+            const now = new Date();
+            const currentTotalMinutes = now.getHours() * 60 + now.getMinutes();
+            
+            return currentTotalMinutes > slotEndMinutes;
+        }
+        
+        // Check if any slot has a failing temperature
+        function hasFailingTemp(row) {
+            const min = parseFloat(row.dataset.min);
+            const max = parseFloat(row.dataset.max);
+            const inputs = row.querySelectorAll('input[data-slot]');
+            
+            for (const input of inputs) {
+                const value = input.value.trim();
+                if (value !== '') {
+                    const temp = parseFloat(value);
+                    if (!isNaN(temp) && (temp < min || temp > max)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+        
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
-            // Set today's date
-            document.getElementById('log-date').valueAsDate = new Date();
+            // Check for date parameter in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const dateParam = urlParams.get('date');
+            
+            if (dateParam) {
+                document.getElementById('log-date').value = dateParam;
+            } else {
+                // Set today's date
+                document.getElementById('log-date').valueAsDate = new Date();
+            }
             
             // Load time slots first
             await loadTimeSlots();
@@ -500,6 +586,11 @@
             
             // Load sections
             await loadSections();
+            
+            // If date was passed, auto-load the form
+            if (dateParam) {
+                loadForm();
+            }
             
             // Auto-load the form with today's date
             await loadForm();
@@ -636,9 +727,13 @@
         // Render temperature table
         function renderTable() {
             const tbody = document.getElementById('readings-body');
+            const selectedDate = document.getElementById('log-date').value;
+            const today = getLocalToday();
+            const isToday = selectedDate === today;
             
             tbody.innerHTML = fridges.map(f => {
                 const existing = existingReadings[f.id] || {};
+                const existingAction = existing.corrective_action || '';
                 
                 return `
                     <tr data-fridge-id="${f.id}" data-min="${f.min_temp}" data-max="${f.max_temp}">
@@ -646,21 +741,46 @@
                             ${escapeHtml(f.fridge_name)}
                             <span class="temp-range">${f.min_temp}°C to ${f.max_temp}°C</span>
                         </td>
-                        ${TIME_SLOTS.map(slot => `
+                        ${TIME_SLOTS.map(slot => {
+                            const existingValue = existing[`temp_${slot}`];
+                            const hasValue = existingValue !== null && existingValue !== undefined && existingValue !== '';
+                            const editable = isToday ? isSlotEditable(slot) : false;
+                            // Disable if not today OR not within the 30-min window
+                            const disabled = !isToday || !editable ? 'disabled' : '';
+                            
+                            let title = '';
+                            if (!isToday) {
+                                title = 'Past date - view only';
+                            } else if (!editable) {
+                                const slotHour = SLOT_HOURS[slot];
+                                const now = new Date();
+                                const currentTotalMinutes = now.getHours() * 60 + now.getMinutes();
+                                const slotStartMinutes = slotHour * 60;
+                                if (currentTotalMinutes < slotStartMinutes) {
+                                    title = 'Not yet - wait until slot time';
+                                } else {
+                                    title = 'Window closed - 30 min limit passed';
+                                }
+                            }
+                            
+                            return `
                             <td>
                                 <input type="number" 
-                                       class="temp-input ${getInputClass(existing[`temp_${slot}`], f.min_temp, f.max_temp)}" 
+                                       class="temp-input ${getInputClass(existingValue, f.min_temp, f.max_temp)}" 
                                        data-slot="${slot}"
-                                       value="${existing[`temp_${slot}`] ?? ''}"
+                                       value="${existingValue ?? ''}"
                                        step="0.1"
-                                       onchange="updateTempClass(this, ${f.min_temp}, ${f.max_temp})">
+                                       ${disabled}
+                                       title="${title}"
+                                       onchange="updateTempClass(this, ${f.min_temp}, ${f.max_temp}); checkCorrectiveAction(this)">
                             </td>
-                        `).join('')}
+                        `}).join('')}
                         <td>
                             <textarea class="action-input" 
                                       data-action="true"
                                       rows="2"
-                                      placeholder="Enter if needed">${existing.corrective_action || ''}</textarea>
+                                      ${!isToday ? 'disabled' : ''}
+                                      placeholder="Required if temp fails">${existingAction}</textarea>
                         </td>
                     </tr>
                 `;
@@ -687,6 +807,22 @@
             }
         }
         
+        // Check if corrective action is needed when temp changes
+        function checkCorrectiveAction(input) {
+            const row = input.closest('tr');
+            const actionInput = row.querySelector('textarea[data-action="true"]');
+            
+            if (hasFailingTemp(row)) {
+                actionInput.style.borderColor = '#ef4444';
+                actionInput.style.background = '#fef2f2';
+                actionInput.placeholder = 'REQUIRED - Enter corrective action';
+            } else {
+                actionInput.style.borderColor = '#d1d5db';
+                actionInput.style.background = '';
+                actionInput.placeholder = 'Enter if needed';
+            }
+        }
+        
         // Save readings
         async function saveReadings() {
             const date = document.getElementById('log-date').value;
@@ -696,8 +832,29 @@
                 return;
             }
             
-            const readings = [];
+            // Validate corrective actions for failing temps
             const rows = document.querySelectorAll('#readings-body tr');
+            const errors = [];
+            
+            rows.forEach(row => {
+                const fridgeName = row.querySelector('.fridge-name').textContent.trim().split('\n')[0].trim();
+                
+                if (hasFailingTemp(row)) {
+                    const actionInput = row.querySelector('textarea[data-action="true"]');
+                    if (!actionInput.value.trim()) {
+                        errors.push(fridgeName);
+                        actionInput.style.borderColor = '#ef4444';
+                        actionInput.style.background = '#fef2f2';
+                    }
+                }
+            });
+            
+            if (errors.length > 0) {
+                showToast(`Corrective action required for: ${errors.slice(0, 3).join(', ')}${errors.length > 3 ? ' and others' : ''}`, true);
+                return;
+            }
+            
+            const readings = [];
             
             rows.forEach(row => {
                 const fridgeId = parseInt(row.dataset.fridgeId);
