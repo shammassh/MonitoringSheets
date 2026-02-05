@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Cooking & Cooling Form - FS Monitoring</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -612,9 +615,23 @@
                 document.getElementById('logDate').value = reading.log_date.split('T')[0];
                 document.getElementById('productName').value = reading.product_name;
                 document.getElementById('cookingCoreTemp').value = reading.cooking_core_temp;
-                document.getElementById('coolingMethod').value = reading.cooling_method;
+                
+                // Set cooling method - ensure dropdown option exists
+                const coolingMethodSelect = document.getElementById('coolingMethod');
+                if (reading.cooling_method) {
+                    // Check if option exists, if not add it temporarily
+                    let optionExists = Array.from(coolingMethodSelect.options).some(opt => opt.value === reading.cooling_method);
+                    if (!optionExists) {
+                        const option = document.createElement('option');
+                        option.value = reading.cooling_method;
+                        option.textContent = reading.cooling_method;
+                        coolingMethodSelect.appendChild(option);
+                    }
+                    coolingMethodSelect.value = reading.cooling_method;
+                }
+                
                 document.getElementById('startCoolingTime').value = reading.start_cooling_time?.substring(0, 5) || '';
-                document.getElementById('startCoolingTemp').value = reading.start_cooling_temp;
+                document.getElementById('startCoolingTemp').value = reading.start_cooling_temp || '';
                 document.getElementById('tempAfter1h').value = reading.temp_after_1h || '';
                 document.getElementById('tempAfter1h30').value = reading.temp_after_1h30 || '';
                 document.getElementById('tempAfter2h').value = reading.temp_after_2h || '';

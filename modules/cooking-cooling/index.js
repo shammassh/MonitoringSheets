@@ -345,10 +345,13 @@ router.put('/api/readings/:id', async (req, res) => {
                     comments = @comments,
                     status = @status,
                     updated_at = GETDATE()
+                OUTPUT INSERTED.*
                 WHERE id = @id AND verified_by IS NULL
-                
-                SELECT * FROM CookingCoolingReadings WHERE id = @id
             `);
+        
+        if (result.recordset.length === 0) {
+            return res.status(400).json({ error: 'Record not found or already verified' });
+        }
         
         res.json(result.recordset[0]);
     } catch (err) {
