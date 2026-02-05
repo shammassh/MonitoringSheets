@@ -297,6 +297,31 @@
             </div>
         </div>
 
+        <!-- Sections Management -->
+        <div class="settings-card" style="margin-top: 1.5rem;">
+            <h2 class="card-title">
+                <i class="fas fa-layer-group"></i>
+                Manage Sections
+            </h2>
+            <p class="card-subtitle">Add or remove section locations for dry store expiry checks</p>
+
+            <div id="sectionsContent">
+                <div class="add-form">
+                    <input type="text" id="newSectionInput" placeholder="Enter section name...">
+                    <button class="btn btn-primary" onclick="addSection()">
+                        <i class="fas fa-plus"></i>
+                        Add Section
+                    </button>
+                </div>
+
+                <div class="sections-list" id="sectionsList">
+                    <div class="empty-state">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Loading sections...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
 
     </div>
 
@@ -315,10 +340,12 @@
             // Check access - Allow Admin and Super Auditor
             if (currentUser.role !== 'Admin' && currentUser.role !== 'Super Auditor') {
                 document.getElementById('branchesContent').style.display = 'none';
+                document.getElementById('sectionsContent').style.display = 'none';
                 return;
             }
             
             await loadBranches();
+            await loadSections();
         });
 
         async function loadBranches() {
@@ -353,6 +380,93 @@
                 currentUser = await response.json();
             } catch (error) {
                 console.error('Error loading current user:', error);
+            }
+        }
+
+        async function loadSections() {
+            try {
+                const response = await fetch('/dry-store-expiry/api/sections');
+                const sections = await response.json();
+                renderSections(sections);
+            } catch (error) {
+                console.error('Error loading sections:', error);
+                document.getElementById('sectionsList').innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <p>Failed to load sections</p>
+                    </div>
+                `;
+            }
+        }
+
+        function renderSections(sections) {
+            const container = document.getElementById('sectionsList');
+            
+            if (sections.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-layer-group"></i>
+                        <p>No sections added yet. Add your first section above.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = sections.map(section => `
+                <div class="section-item">
+                    <span class="section-name">
+                        <i class="fas fa-folder"></i>
+                        ${section.name}
+                    </span>
+                    <button class="btn-delete" onclick="deleteSection(${section.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        async function addSection() {
+            const input = document.getElementById('newSectionInput');
+            const name = input.value.trim();
+            
+            if (!name) {
+                showToast('Please enter a section name', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/dry-store-expiry/api/sections', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+                
+                if (!response.ok) throw new Error('Failed to add section');
+                
+                input.value = '';
+                showToast('Section added successfully!', 'success');
+                await loadSections();
+            } catch (error) {
+                console.error('Error adding section:', error);
+                showToast('Failed to add section', 'error');
+            }
+        }
+
+        async function deleteSection(id) {
+            if (!confirm('Are you sure you want to delete this section?')) return;
+            
+            try {
+                const response = await fetch(`/dry-store-expiry/api/sections/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                if (!response.ok) throw new Error('Failed to delete section');
+                
+                showToast('Section deleted successfully!', 'success');
+                await loadSections();
+            } catch (error) {
+                console.error('Error deleting section:', error);
+                showToast('Failed to delete section', 'error');
             }
         }
 
