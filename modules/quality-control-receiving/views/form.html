@@ -549,8 +549,18 @@
                             <input type="text" id="productName" required>
                         </div>
                         <div class="form-group">
+                            <label for="foodCategory">Food Category *</label>
+                            <select id="foodCategory" required onchange="onFoodCategoryChange()">
+                                <option value="">-- Select Category --</option>
+                            </select>
+                            <small id="tempRangeHint" style="color: #6b7280; font-size: 0.75rem;"></small>
+                        </div>
+                        <div class="form-group">
                             <label for="supplierName">Supplier</label>
-                            <input type="text" id="supplierName" placeholder="Enter supplier name">
+                            <select id="supplierName" onchange="toggleOtherSupplier()">
+                                <option value="">-- Select Supplier --</option>
+                            </select>
+                            <input type="text" id="otherSupplierName" placeholder="Enter supplier name" style="display: none; margin-top: 0.5rem;">
                         </div>
                         <div class="form-group">
                             <label for="productionDate">Production Date</label>
@@ -570,8 +580,11 @@
                         </div>
                         <div class="form-group">
                             <label for="receivingTemp">Product Temperature (°C)</label>
-                            <input type="number" id="receivingTemp" step="0.1">
+                            <input type="number" id="receivingTemp" step="0.1" onchange="checkTemperatureDeviation()">
                         </div>
+                    </div>
+                    <div id="tempDeviationWarning" style="display: none; background: #fef2f2; border: 1px solid #fecaca; padding: 0.75rem; border-radius: 8px; margin-top: 0.5rem; color: #991b1b; font-size: 0.875rem;">
+                        ⚠️ <strong>Temperature Deviation Detected!</strong> Product temperature is outside the acceptable range. Corrective action is required.
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
                         <label style="display: flex; align-items: center; gap: 0.5rem;">
@@ -618,7 +631,8 @@
                 
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-                    <button type="submit" class="btn btn-success">💾 Save Entry</button>
+                    <button type="button" class="btn btn-warning" onclick="saveEntry(event, 'draft')" style="background: #f59e0b; color: white;">📝 Save Draft</button>
+                    <button type="submit" class="btn btn-success">✅ Submit</button>
                 </div>
             </form>
         </div>
@@ -629,6 +643,7 @@
         let currentDocument = null;
         let currentUser = null;
         let suppliers = [];
+        let foodCategories = [];
         let entries = [];
         
         // Initialize
@@ -641,6 +656,9 @@
             
             // Load suppliers
             await loadSuppliers();
+            
+            // Load food categories
+            await loadFoodCategories();
             
             // Check if editing existing document
             const urlParams = new URLSearchParams(window.location.search);
@@ -716,16 +734,111 @@
         // Load suppliers for dropdown
         async function loadSuppliers() {
             try {
-                const response = await fetch('/quality-control-receiving/api/suppliers');
+                const response = await fetch('/quality-control-receiving/api/suppliers?_t=' + Date.now());
                 suppliers = await response.json();
                 
-                const select = document.getElementById('supplierId');
+                const select = document.getElementById('supplierName');
                 select.innerHTML = '<option value="">-- Select Supplier --</option>';
                 suppliers.forEach(s => {
-                    select.innerHTML += `<option value="${s.id}">${s.supplier_name}</option>`;
+                    select.innerHTML += `<option value="${s.supplier_name}">${s.supplier_name}</option>`;
                 });
+                select.innerHTML += '<option value="__OTHER__">Other (Enter manually)</option>';
             } catch (err) {
                 console.error('Error loading suppliers:', err);
+            }
+        }
+        
+        // Toggle other supplier text input
+        function toggleOtherSupplier() {
+            const select = document.getElementById('supplierName');
+            const otherInput = document.getElementById('otherSupplierName');
+            if (select.value === '__OTHER__') {
+                otherInput.style.display = 'block';
+                otherInput.focus();
+            } else {
+                otherInput.style.display = 'none';
+                otherInput.value = '';
+            }
+        }
+        
+        // Load food categories for dropdown
+        async function loadFoodCategories() {
+            try {
+                const response = await fetch('/quality-control-receiving/api/food-categories?_t=' + Date.now());
+                foodCategories = await response.json();
+                
+                const select = document.getElementById('foodCategory');
+                select.innerHTML = '<option value="">-- Select Category --</option>';
+                foodCategories.forEach(cat => {
+                    select.innerHTML += `<option value="${cat.id}" data-min="${cat.min_temp}" data-max="${cat.max_temp}">${cat.category_name} (${cat.min_temp}°C to ${cat.max_temp}°C)</option>`;
+                });
+            } catch (err) {
+                console.error('Error loading food categories:', err);
+            }
+        }
+        
+        // Handle food category change - show temp range hint
+        function onFoodCategoryChange() {
+            const select = document.getElementById('foodCategory');
+            const hint = document.getElementById('tempRangeHint');
+            const selectedOption = select.options[select.selectedIndex];
+            
+            if (select.value && selectedOption.dataset.min !== undefined) {
+                hint.textContent = `Acceptable range: ${selectedOption.dataset.min}°C to ${selectedOption.dataset.max}°C`;
+                hint.style.display = 'block';
+            } else {
+                hint.textContent = '';
+                hint.style.display = 'none';
+            }
+            
+            // Re-check temperature if already entered
+            checkTemperatureDeviation();
+        }
+        
+        // Check if temperature is within acceptable range for selected category
+        function checkTemperatureDeviation() {
+            const categorySelect = document.getElementById('foodCategory');
+            const tempInput = document.getElementById('receivingTemp');
+            const warning = document.getElementById('tempDeviationWarning');
+            const correctiveSection = document.getElementById('correctiveAction');
+            
+            const temp = parseFloat(tempInput.value);
+            const selectedOption = categorySelect.options[categorySelect.selectedIndex];
+            
+            if (!categorySelect.value || isNaN(temp) || !selectedOption.dataset.min) {
+                warning.style.display = 'none';
+                tempInput.style.borderColor = '#d1d5db';
+                return false;
+            }
+            
+            const minTemp = parseFloat(selectedOption.dataset.min);
+            const maxTemp = parseFloat(selectedOption.dataset.max);
+            
+            if (temp < minTemp || temp > maxTemp) {
+                warning.style.display = 'block';
+                tempInput.style.borderColor = '#ef4444';
+                tempInput.style.background = '#fef2f2';
+                
+                // Highlight corrective action field
+                if (correctiveSection) {
+                    correctiveSection.style.borderColor = '#ef4444';
+                    correctiveSection.style.background = '#fef2f2';
+                    correctiveSection.placeholder = 'REQUIRED - Enter corrective action for temperature deviation';
+                    correctiveSection.required = true;
+                }
+                return true; // Has deviation
+            } else {
+                warning.style.display = 'none';
+                tempInput.style.borderColor = '#10b981';
+                tempInput.style.background = '#ecfdf5';
+                
+                if (correctiveSection) {
+                    correctiveSection.style.borderColor = '#d1d5db';
+                    correctiveSection.style.background = '';
+                    correctiveSection.placeholder = '';
+                    correctiveSection.required = false;
+                }
+                return false; // No deviation
             }
         }
         
@@ -856,11 +969,16 @@
                 const prodDate = entry.production_date ? new Date(entry.production_date).toLocaleDateString() : '-';
                 const expDate = entry.product_expiry_date ? new Date(entry.product_expiry_date).toLocaleDateString() : '-';
                 
+                // Check if draft
+                const isDraft = entry.entry_status === 'draft';
+                const draftStyle = isDraft ? 'background: #fef3c7; border-left: 4px solid #f59e0b;' : '';
+                const draftBadge = isDraft ? '<span style="background: #f59e0b; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; margin-left: 5px;">DRAFT</span>' : '';
+                
                 return `
-                    <tr>
+                    <tr style="${draftStyle}">
                         <td>${index + 1}</td>
                         <td style="text-align: left;">
-                            <strong>${entry.product_name}</strong><br>
+                            <strong>${entry.product_name}</strong>${draftBadge}<br>
                             <small style="color: #6b7280;">Prod: ${prodDate}</small><br>
                             <small style="color: #6b7280;">Exp: ${expDate}</small>
                         </td>
@@ -879,12 +997,12 @@
                         <td>${entry.quality_controller_signature || '-'}</td>
                         <td>
                             <span class="status-badge ${entry.overall_status === 'Pass' ? 'status-pass' : 'status-review'}">
-                                ${entry.overall_status}
+                                ${isDraft ? 'Draft' : entry.overall_status}
                             </span>
                         </td>
                         <td>
                             <div class="action-buttons">
-                                <button class="btn btn-primary btn-sm" onclick="editEntry(${entry.id})">✏️</button>
+                                <button class="btn btn-primary btn-sm" onclick="editEntry(${entry.id})">${isDraft ? '📝 Continue' : '✏️'}</button>
                                 <button class="btn btn-danger btn-sm" onclick="deleteEntry(${entry.id})">🗑️</button>
                             </div>
                         </td>
@@ -908,6 +1026,16 @@
             document.getElementById('modalTitle').textContent = '➕ Add New Entry';
             document.getElementById('entryForm').reset();
             document.getElementById('entryId').value = '';
+            
+            // Reset other supplier input
+            document.getElementById('otherSupplierName').style.display = 'none';
+            document.getElementById('otherSupplierName').value = '';
+            
+            // Reset food category hints and warning
+            document.getElementById('tempRangeHint').textContent = '';
+            document.getElementById('tempDeviationWarning').style.display = 'none';
+            document.getElementById('receivingTemp').style.borderColor = '#d1d5db';
+            document.getElementById('receivingTemp').style.background = '';
             
             // Set current time as default
             const now = new Date();
@@ -935,7 +1063,27 @@
             document.getElementById('modalTitle').textContent = '✏️ Edit Entry';
             document.getElementById('entryId').value = entry.id;
             document.getElementById('productName').value = entry.product_name;
-            document.getElementById('supplierName').value = entry.supplier_name || '';
+            
+            // Set food category
+            document.getElementById('foodCategory').value = entry.food_category_id || '';
+            onFoodCategoryChange(); // Update hint
+            
+            // Handle supplier - check if it's in the dropdown or should be "Other"
+            const supplierSelect = document.getElementById('supplierName');
+            const otherSupplierInput = document.getElementById('otherSupplierName');
+            const supplierValue = entry.supplier_name || '';
+            const optionExists = Array.from(supplierSelect.options).some(opt => opt.value === supplierValue && opt.value !== '__OTHER__');
+            
+            if (supplierValue && !optionExists) {
+                supplierSelect.value = '__OTHER__';
+                otherSupplierInput.style.display = 'block';
+                otherSupplierInput.value = supplierValue;
+            } else {
+                supplierSelect.value = supplierValue;
+                otherSupplierInput.style.display = 'none';
+                otherSupplierInput.value = '';
+            }
+            
             document.getElementById('productionDate').value = entry.production_date ? entry.production_date.split('T')[0] : '';
             document.getElementById('productExpiry').value = entry.product_expiry_date ? entry.product_expiry_date.split('T')[0] : '';
             document.getElementById('receivingTime').value = entry.receiving_time ? entry.receiving_time.substring(0, 5) : '';
@@ -954,15 +1102,46 @@
         }
         
         // Save entry
-        async function saveEntry(event) {
+        async function saveEntry(event, status = 'submitted') {
             event.preventDefault();
             
             const entryId = document.getElementById('entryId').value;
+            const isDraft = status === 'draft';
+            
+            // For submit only - validate required fields
+            if (!isDraft) {
+                // Check for temperature deviation - require corrective action
+                const hasDeviation = checkTemperatureDeviation();
+                const correctiveAction = document.getElementById('correctiveAction').value;
+                
+                if (hasDeviation && !correctiveAction.trim()) {
+                    showAlert('Corrective action is required when temperature is outside acceptable range', 'error');
+                    document.getElementById('correctiveAction').focus();
+                    return;
+                }
+                
+                // Require signature for submit
+                const signature = document.getElementById('qcSignature').value;
+                if (!signature || !signature.trim()) {
+                    showAlert('Signature is required to submit the entry', 'error');
+                    document.getElementById('qcSignature').focus();
+                    return;
+                }
+            }
+            
+            // Get supplier name - use other input if "Other" is selected
+            const supplierSelect = document.getElementById('supplierName').value;
+            const otherSupplier = document.getElementById('otherSupplierName').value;
+            const finalSupplierName = supplierSelect === '__OTHER__' ? otherSupplier : supplierSelect;
+            
+            // Get food category
+            const foodCategoryId = document.getElementById('foodCategory').value;
             
             const entryData = {
                 document_id: currentDocument.id,
                 product_name: document.getElementById('productName').value,
-                supplier_name: document.getElementById('supplierName').value || null,
+                food_category_id: foodCategoryId || null,
+                supplier_name: finalSupplierName || null,
                 production_date: document.getElementById('productionDate').value || null,
                 product_expiry_date: document.getElementById('productExpiry').value || null,
                 receiving_time: document.getElementById('receivingTime').value,
@@ -975,14 +1154,15 @@
                 storage_time: document.getElementById('storageTime').value || null,
                 comments: document.getElementById('comments').value || null,
                 corrective_action: document.getElementById('correctiveAction').value || null,
-                quality_controller_signature: document.getElementById('qcSignature').value || null
+                quality_controller_signature: document.getElementById('qcSignature').value || null,
+                entry_status: status
             };
             
             try {
                 const url = entryId ? `/quality-control-receiving/api/entries/${entryId}` : '/quality-control-receiving/api/entries';
                 const method = entryId ? 'PUT' : 'POST';
                 
-                console.log('Saving entry:', { url, method, entryId, entryData });
+                console.log('Saving entry:', { url, method, entryId, entryData, status });
                 
                 const response = await fetch(url, {
                     method: method,
@@ -997,7 +1177,10 @@
                 if (response.ok) {
                     closeModal();
                     await loadEntries();
-                    showAlert(entryId ? 'Entry updated successfully' : 'Entry added successfully', 'success');
+                    const message = isDraft 
+                        ? 'Entry saved as draft. You can complete it later.' 
+                        : (entryId ? 'Entry updated successfully' : 'Entry submitted successfully');
+                    showAlert(message, 'success');
                 } else {
                     showAlert('Failed to save entry: ' + (responseData.error || 'Unknown error'), 'error');
                 }

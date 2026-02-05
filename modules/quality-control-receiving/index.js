@@ -229,6 +229,83 @@ router.delete('/api/suppliers/:id', async (req, res) => {
 });
 
 // ==========================================
+// Food Category Management APIs
+// ==========================================
+
+// Get all food categories
+router.get('/api/food-categories', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const result = await pool.request()
+            .query('SELECT * FROM QCR_FoodCategories WHERE is_active = 1 ORDER BY category_name');
+        res.json(result.recordset);
+    } catch (err) {
+        console.error('Error fetching food categories:', err);
+        res.status(500).json({ error: 'Failed to fetch food categories' });
+    }
+});
+
+// Add food category
+router.post('/api/food-categories', async (req, res) => {
+    try {
+        const { category_name, min_temp, max_temp } = req.body;
+        const pool = await getPool();
+        
+        const result = await pool.request()
+            .input('category_name', sql.NVarChar, category_name)
+            .input('min_temp', sql.Decimal(5, 2), min_temp)
+            .input('max_temp', sql.Decimal(5, 2), max_temp)
+            .query(`INSERT INTO QCR_FoodCategories (category_name, min_temp, max_temp) 
+                    OUTPUT INSERTED.* 
+                    VALUES (@category_name, @min_temp, @max_temp)`);
+        
+        res.json(result.recordset[0]);
+    } catch (err) {
+        console.error('Error adding food category:', err);
+        res.status(500).json({ error: 'Failed to add food category' });
+    }
+});
+
+// Update food category
+router.put('/api/food-categories/:id', async (req, res) => {
+    try {
+        const { category_name, min_temp, max_temp } = req.body;
+        const pool = await getPool();
+        
+        await pool.request()
+            .input('id', sql.Int, req.params.id)
+            .input('category_name', sql.NVarChar, category_name)
+            .input('min_temp', sql.Decimal(5, 2), min_temp)
+            .input('max_temp', sql.Decimal(5, 2), max_temp)
+            .query(`UPDATE QCR_FoodCategories SET 
+                    category_name = @category_name, 
+                    min_temp = @min_temp,
+                    max_temp = @max_temp,
+                    updated_at = GETDATE()
+                    WHERE id = @id`);
+        
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Error updating food category:', err);
+        res.status(500).json({ error: 'Failed to update food category' });
+    }
+});
+
+// Delete food category (soft delete)
+router.delete('/api/food-categories/:id', async (req, res) => {
+    try {
+        const pool = await getPool();
+        await pool.request()
+            .input('id', sql.Int, req.params.id)
+            .query('UPDATE QCR_FoodCategories SET is_active = 0, updated_at = GETDATE() WHERE id = @id');
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Error deleting food category:', err);
+        res.status(500).json({ error: 'Failed to delete food category' });
+    }
+});
+
+// ==========================================
 // Document APIs
 // ==========================================
 
@@ -454,6 +531,7 @@ router.post('/api/entries', async (req, res) => {
         const {
             document_id,
             product_name,
+            food_category_id,
             production_date,
             product_expiry_date,
             supplier_name,
@@ -467,7 +545,8 @@ router.post('/api/entries', async (req, res) => {
             storage_time,
             comments,
             corrective_action,
-            quality_controller_signature
+            quality_controller_signature,
+            entry_status
         } = req.body;
         
         const pool = await getPool();
@@ -483,6 +562,7 @@ router.post('/api/entries', async (req, res) => {
         const result = await pool.request()
             .input('document_id', sql.Int, document_id)
             .input('product_name', sql.NVarChar, product_name)
+            .input('food_category_id', sql.Int, food_category_id || null)
             .input('production_date', sql.Date, production_date || null)
             .input('product_expiry_date', sql.Date, product_expiry_date || null)
             .input('supplier_name', sql.NVarChar, supplier_name || null)
@@ -500,20 +580,21 @@ router.post('/api/entries', async (req, res) => {
             .input('quality_controller_signature', sql.NVarChar, quality_controller_signature || null)
             .input('signature_timestamp', sql.DateTime, quality_controller_signature ? new Date() : null)
             .input('overall_status', sql.NVarChar, overall_status)
+            .input('entry_status', sql.NVarChar, entry_status || 'submitted')
             .query(`INSERT INTO QCR_Entries (
-                        document_id, product_name, production_date, product_expiry_date, supplier_name,
+                        document_id, product_name, food_category_id, production_date, product_expiry_date, supplier_name,
                         receiving_time, receiving_temp, receiving_area_clean, product_well_covered,
                         pack_opened_inspected, no_physical_hazards, truck_cleanliness, storage_time,
                         duration_minutes, comments, corrective_action, quality_controller_signature,
-                        signature_timestamp, overall_status
+                        signature_timestamp, overall_status, entry_status
                     ) 
                     OUTPUT INSERTED.* 
                     VALUES (
-                        @document_id, @product_name, @production_date, @product_expiry_date, @supplier_name,
+                        @document_id, @product_name, @food_category_id, @production_date, @product_expiry_date, @supplier_name,
                         TRY_CAST(@receiving_time AS TIME), @receiving_temp, @receiving_area_clean, @product_well_covered,
                         @pack_opened_inspected, @no_physical_hazards, @truck_cleanliness, TRY_CAST(@storage_time AS TIME),
                         @duration_minutes, @comments, @corrective_action, @quality_controller_signature,
-                        @signature_timestamp, @overall_status
+                        @signature_timestamp, @overall_status, @entry_status
                     )`);
         
         res.json(result.recordset[0]);
@@ -534,6 +615,7 @@ router.put('/api/entries/:id', async (req, res) => {
             production_date,
             product_expiry_date,
             supplier_name,
+            food_category_id,
             receiving_time,
             receiving_temp,
             receiving_area_clean,
@@ -544,7 +626,8 @@ router.put('/api/entries/:id', async (req, res) => {
             storage_time,
             comments,
             corrective_action,
-            quality_controller_signature
+            quality_controller_signature,
+            entry_status
         } = req.body;
         
         const pool = await getPool();
@@ -563,6 +646,7 @@ router.put('/api/entries/:id', async (req, res) => {
             .input('production_date', sql.Date, production_date || null)
             .input('product_expiry_date', sql.Date, product_expiry_date || null)
             .input('supplier_name', sql.NVarChar, supplier_name || null)
+            .input('food_category_id', sql.Int, food_category_id || null)
             .input('receiving_time', sql.NVarChar, formatTimeForSQL(receiving_time))
             .input('receiving_temp', sql.Decimal(5, 2), receiving_temp || null)
             .input('receiving_area_clean', sql.Bit, receiving_area_clean ? 1 : 0)
@@ -577,11 +661,13 @@ router.put('/api/entries/:id', async (req, res) => {
             .input('quality_controller_signature', sql.NVarChar, quality_controller_signature || null)
             .input('signature_timestamp', sql.DateTime, quality_controller_signature ? new Date() : null)
             .input('overall_status', sql.NVarChar, overall_status)
+            .input('entry_status', sql.NVarChar, entry_status || 'submitted')
             .query(`UPDATE QCR_Entries SET 
                     product_name = @product_name,
                     production_date = @production_date,
                     product_expiry_date = @product_expiry_date,
                     supplier_name = @supplier_name,
+                    food_category_id = @food_category_id,
                     receiving_time = TRY_CAST(@receiving_time AS TIME),
                     receiving_temp = @receiving_temp,
                     receiving_area_clean = @receiving_area_clean,
@@ -596,6 +682,7 @@ router.put('/api/entries/:id', async (req, res) => {
                     quality_controller_signature = @quality_controller_signature,
                     signature_timestamp = @signature_timestamp,
                     overall_status = @overall_status,
+                    entry_status = @entry_status,
                     updated_at = GETDATE()
                     WHERE id = @id`);
         
