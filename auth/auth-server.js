@@ -88,9 +88,9 @@ class AuthServer {
         // Protected Routes (authentication required)
         // ==========================================
         
-        // Logout
-        this.app.get('/auth/logout', requireAuth, async (req, res) => {
-            await this.logoutHandler.handleLogout(req, res);
+        // Logout - Does NOT require auth (should work even with invalid session)
+        this.app.get('/auth/logout', async (req, res) => {
+            await LogoutHandler.handleLogout(req, res);
         });
         
         // Pending approval page (for users with 'Pending' role)
