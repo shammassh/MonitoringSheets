@@ -50,6 +50,14 @@ IF NOT EXISTS (SELECT 1 FROM DryStoreSettings WHERE setting_key = 'humidity_max'
     INSERT INTO DryStoreSettings (setting_key, setting_value) VALUES ('humidity_max', '65');
 IF NOT EXISTS (SELECT 1 FROM DryStoreSettings WHERE setting_key = 'branch')
     INSERT INTO DryStoreSettings (setting_key, setting_value) VALUES ('branch', 'Main Branch');
+IF NOT EXISTS (SELECT 1 FROM DryStoreSettings WHERE setting_key = 'creation_date')
+    INSERT INTO DryStoreSettings (setting_key, setting_value) VALUES ('creation_date', '2024-01-15');
+IF NOT EXISTS (SELECT 1 FROM DryStoreSettings WHERE setting_key = 'last_revision_date')
+    INSERT INTO DryStoreSettings (setting_key, setting_value) VALUES ('last_revision_date', '2024-03-20');
+IF NOT EXISTS (SELECT 1 FROM DryStoreSettings WHERE setting_key = 'edition')
+    INSERT INTO DryStoreSettings (setting_key, setting_value) VALUES ('edition', '2.1');
+IF NOT EXISTS (SELECT 1 FROM DryStoreSettings WHERE setting_key = 'company_name')
+    INSERT INTO DryStoreSettings (setting_key, setting_value) VALUES ('company_name', 'GMRL Group');
 GO
 
 -- Dry Store Locations Table

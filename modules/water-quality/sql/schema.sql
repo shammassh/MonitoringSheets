@@ -60,6 +60,14 @@ IF NOT EXISTS (SELECT 1 FROM WaterQualitySettings WHERE setting_key = 'chlorine_
     INSERT INTO WaterQualitySettings (setting_key, setting_value) VALUES ('chlorine_pou_min', '0.2');
 IF NOT EXISTS (SELECT 1 FROM WaterQualitySettings WHERE setting_key = 'chlorine_pou_max')
     INSERT INTO WaterQualitySettings (setting_key, setting_value) VALUES ('chlorine_pou_max', '0.5');
+IF NOT EXISTS (SELECT 1 FROM WaterQualitySettings WHERE setting_key = 'creation_date')
+    INSERT INTO WaterQualitySettings (setting_key, setting_value) VALUES ('creation_date', '2024-01-15');
+IF NOT EXISTS (SELECT 1 FROM WaterQualitySettings WHERE setting_key = 'last_revision_date')
+    INSERT INTO WaterQualitySettings (setting_key, setting_value) VALUES ('last_revision_date', '2024-03-20');
+IF NOT EXISTS (SELECT 1 FROM WaterQualitySettings WHERE setting_key = 'edition')
+    INSERT INTO WaterQualitySettings (setting_key, setting_value) VALUES ('edition', '2.1');
+IF NOT EXISTS (SELECT 1 FROM WaterQualitySettings WHERE setting_key = 'company_name')
+    INSERT INTO WaterQualitySettings (setting_key, setting_value) VALUES ('company_name', 'GMRL Group');
 GO
 
 -- Water Quality Sections Table

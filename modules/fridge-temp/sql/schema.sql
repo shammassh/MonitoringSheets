@@ -78,4 +78,25 @@ BEGIN
 END
 GO
 
+-- Fridge Temperature Settings Table
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'FridgeTempSettings')
+BEGIN
+    CREATE TABLE FridgeTempSettings (
+        id INT IDENTITY(1,1) PRIMARY KEY,
+        setting_key NVARCHAR(100) NOT NULL UNIQUE,
+        setting_value NVARCHAR(500),
+        created_at DATETIME DEFAULT GETDATE(),
+        updated_at DATETIME DEFAULT GETDATE()
+    );
+    
+    -- Default settings
+    INSERT INTO FridgeTempSettings (setting_key, setting_value) VALUES ('document_prefix', 'FT');
+    INSERT INTO FridgeTempSettings (setting_key, setting_value) VALUES ('creation_date', '2026-01-15');
+    INSERT INTO FridgeTempSettings (setting_key, setting_value) VALUES ('last_revision_date', '2026-01-15');
+    INSERT INTO FridgeTempSettings (setting_key, setting_value) VALUES ('edition', '1.0');
+    INSERT INTO FridgeTempSettings (setting_key, setting_value) VALUES ('company_name', 'GMRL Group');
+    PRINT 'FridgeTempSettings table created with defaults';
+END
+GO
+
 PRINT 'Fridge Temperature Monitoring schema created successfully';

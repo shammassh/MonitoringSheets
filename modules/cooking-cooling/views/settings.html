@@ -278,6 +278,38 @@
     </header>
 
     <div class="container">
+        <!-- Document Information Card -->
+        <div class="settings-card" style="margin-bottom: 2rem;">
+            <h2 class="card-title">
+                <i class="fas fa-file-alt"></i>
+                Document Information
+            </h2>
+            <p class="card-subtitle">Document metadata displayed on the dashboard</p>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                <div class="form-group">
+                    <label style="font-weight: 500; color: #374151; display: block; margin-bottom: 0.5rem;">Creation Date</label>
+                    <input type="date" id="creation_date" style="width: 100%; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                </div>
+                <div class="form-group">
+                    <label style="font-weight: 500; color: #374151; display: block; margin-bottom: 0.5rem;">Last Revision Date</label>
+                    <input type="date" id="last_revision_date" style="width: 100%; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                </div>
+                <div class="form-group">
+                    <label style="font-weight: 500; color: #374151; display: block; margin-bottom: 0.5rem;">Edition</label>
+                    <input type="text" id="edition" placeholder="e.g., 1.0" style="width: 100%; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                </div>
+                <div class="form-group">
+                    <label style="font-weight: 500; color: #374151; display: block; margin-bottom: 0.5rem;">Reference (Company)</label>
+                    <input type="text" id="company_name" placeholder="e.g., SSFC" style="width: 100%; padding: 0.75rem; border: 1px solid #e5e7eb; border-radius: 8px;">
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="saveDocumentInfo()" style="margin-top: 1rem;">
+                <i class="fas fa-save"></i>
+                Save Document Info
+            </button>
+        </div>
+
         <div class="settings-card">
             <h2 class="card-title">
                 <i class="fas fa-wind"></i>
@@ -327,6 +359,7 @@
                 return;
             }
             
+            await loadDocumentInfo();
             await loadMethods();
             
             // Enter key handler
@@ -334,6 +367,43 @@
                 if (e.key === 'Enter') addMethod();
             });
         });
+
+        async function loadDocumentInfo() {
+            try {
+                const response = await fetch('/cooking-cooling/api/settings', {
+                    cache: 'no-store',
+                    headers: { 'Cache-Control': 'no-cache' }
+                });
+                const settings = await response.json();
+                document.getElementById('creation_date').value = settings.creation_date || '';
+                document.getElementById('last_revision_date').value = settings.last_revision_date || '';
+                document.getElementById('edition').value = settings.edition || '';
+                document.getElementById('company_name').value = settings.company_name || '';
+            } catch (error) {
+                console.error('Error loading document info:', error);
+            }
+        }
+
+        async function saveDocumentInfo() {
+            try {
+                const data = {
+                    creation_date: document.getElementById('creation_date').value,
+                    last_revision_date: document.getElementById('last_revision_date').value,
+                    edition: document.getElementById('edition').value,
+                    company_name: document.getElementById('company_name').value
+                };
+                const response = await fetch('/cooking-cooling/api/settings', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (!response.ok) throw new Error('Failed to save');
+                showToast('Document info saved successfully!', 'success');
+            } catch (error) {
+                console.error('Error saving document info:', error);
+                showToast('Failed to save document info', 'error');
+            }
+        }
 
         async function loadCurrentUser() {
             try {

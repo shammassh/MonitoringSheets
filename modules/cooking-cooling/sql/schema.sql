@@ -60,4 +60,25 @@ BEGIN
 END
 GO
 
+-- Cooking Cooling Settings Table
+IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'CookingCoolingSettings')
+BEGIN
+    CREATE TABLE CookingCoolingSettings (
+        id INT IDENTITY(1,1) PRIMARY KEY,
+        setting_key NVARCHAR(100) NOT NULL UNIQUE,
+        setting_value NVARCHAR(500),
+        created_at DATETIME DEFAULT GETDATE(),
+        updated_at DATETIME DEFAULT GETDATE()
+    );
+    
+    -- Default settings
+    INSERT INTO CookingCoolingSettings (setting_key, setting_value) VALUES ('document_prefix', 'CC');
+    INSERT INTO CookingCoolingSettings (setting_key, setting_value) VALUES ('creation_date', '2026-01-15');
+    INSERT INTO CookingCoolingSettings (setting_key, setting_value) VALUES ('last_revision_date', '2026-01-15');
+    INSERT INTO CookingCoolingSettings (setting_key, setting_value) VALUES ('edition', '1.0');
+    INSERT INTO CookingCoolingSettings (setting_key, setting_value) VALUES ('company_name', 'GMRL Group');
+    PRINT 'CookingCoolingSettings table created with defaults';
+END
+GO
+
 PRINT 'Cooking and Cooling Temperature Monitoring tables created successfully';

@@ -420,4 +420,59 @@ router.put('/api/documents/:id', async (req, res) => {
     }
 });
 
+// ==========================================
+// Settings APIs
+// ==========================================
+
+// Get settings
+router.get('/api/settings', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const result = await pool.request().query(`
+            SELECT setting_key, setting_value FROM VegFruitWashSettings
+        `);
+        
+        // Convert to object
+        const settings = {};
+        result.recordset.forEach(row => {
+            settings[row.setting_key] = row.setting_value;
+        });
+        
+        res.json(settings);
+    } catch (err) {
+        console.error('Error fetching settings:', err);
+        res.status(500).json({ error: 'Failed to fetch settings' });
+    }
+});
+
+// Update settings
+router.put('/api/settings', async (req, res) => {
+    try {
+        const pool = await getPool();
+        
+        for (const [key, value] of Object.entries(req.body)) {
+            const existsResult = await pool.request()
+                .input('key', sql.NVarChar, key)
+                .query('SELECT id FROM VegFruitWashSettings WHERE setting_key = @key');
+            
+            if (existsResult.recordset.length > 0) {
+                await pool.request()
+                    .input('key', sql.NVarChar, key)
+                    .input('value', sql.NVarChar, value)
+                    .query(`UPDATE VegFruitWashSettings SET setting_value = @value WHERE setting_key = @key`);
+            } else {
+                await pool.request()
+                    .input('key', sql.NVarChar, key)
+                    .input('value', sql.NVarChar, value)
+                    .query(`INSERT INTO VegFruitWashSettings (setting_key, setting_value) VALUES (@key, @value)`);
+            }
+        }
+        
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Error saving settings:', err);
+        res.status(500).json({ error: 'Failed to save settings' });
+    }
+});
+
 module.exports = router;

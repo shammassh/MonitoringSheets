@@ -307,6 +307,38 @@
 
     <div class="container">
         <div class="settings-grid">
+            <!-- Document Metadata -->
+            <div class="settings-card">
+                <div class="card-header">
+                    <i class="fas fa-file-alt"></i>
+                    <h2>Document Information</h2>
+                </div>
+                <div class="card-body">
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1rem;">
+                        <div class="form-group">
+                            <label style="display: block; font-weight: 500; margin-bottom: 0.5rem; color: #374151;">Creation Date</label>
+                            <input type="date" id="creation_date" style="width: 100%; padding: 0.75rem; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 1rem;">
+                        </div>
+                        <div class="form-group">
+                            <label style="display: block; font-weight: 500; margin-bottom: 0.5rem; color: #374151;">Last Revision Date</label>
+                            <input type="date" id="last_revision_date" style="width: 100%; padding: 0.75rem; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 1rem;">
+                        </div>
+                        <div class="form-group">
+                            <label style="display: block; font-weight: 500; margin-bottom: 0.5rem; color: #374151;">Edition</label>
+                            <input type="text" id="edition" placeholder="e.g., 1.0" style="width: 100%; padding: 0.75rem; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 1rem;">
+                        </div>
+                        <div class="form-group">
+                            <label style="display: block; font-weight: 500; margin-bottom: 0.5rem; color: #374151;">Reference (Company)</label>
+                            <input type="text" id="company_name" placeholder="e.g., GMRL Group" style="width: 100%; padding: 0.75rem; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 1rem;">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveDocumentInfo()">
+                        <i class="fas fa-save"></i>
+                        Save Document Info
+                    </button>
+                </div>
+            </div>
+            
             <!-- Threshold Settings -->
             <div class="settings-card">
                 <div class="card-header">
@@ -411,10 +443,52 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             loadSettings();
+            loadDocumentInfo();
             loadBranches();
             loadSections();
             loadEquipment();
         });
+
+        async function loadDocumentInfo() {
+            try {
+                const response = await fetch('/atp-monitoring/api/settings', {
+                    cache: 'no-store',
+                    headers: { 'Cache-Control': 'no-cache' }
+                });
+                const settings = await response.json();
+                
+                document.getElementById('creation_date').value = settings.creation_date || '';
+                document.getElementById('last_revision_date').value = settings.last_revision_date || '';
+                document.getElementById('edition').value = settings.edition || '';
+                document.getElementById('company_name').value = settings.company_name || '';
+            } catch (error) {
+                console.error('Error loading document info:', error);
+            }
+        }
+
+        async function saveDocumentInfo() {
+            try {
+                const data = {
+                    creation_date: document.getElementById('creation_date').value,
+                    last_revision_date: document.getElementById('last_revision_date').value,
+                    edition: document.getElementById('edition').value,
+                    company_name: document.getElementById('company_name').value
+                };
+                
+                const response = await fetch('/atp-monitoring/api/settings', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (!response.ok) throw new Error('Failed to save');
+                
+                showToast('Document info saved successfully!', 'success');
+            } catch (error) {
+                console.error('Error saving document info:', error);
+                showToast('Failed to save document info', 'error');
+            }
+        }
 
         async function loadSettings() {
             try {

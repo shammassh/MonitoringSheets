@@ -271,6 +271,41 @@
     </header>
 
     <div class="container">
+        <!-- Document Information -->
+        <div class="card">
+            <h2>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <path d="M14 2v6h6M16 13H8M16 17H8"/>
+                </svg>
+                Document Information
+            </h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Creation Date</label>
+                    <input type="date" id="creation_date">
+                </div>
+                <div class="form-group">
+                    <label>Last Revision Date</label>
+                    <input type="date" id="last_revision_date">
+                </div>
+                <div class="form-group">
+                    <label>Edition</label>
+                    <input type="text" id="edition" placeholder="e.g., 1.0">
+                </div>
+                <div class="form-group">
+                    <label>Reference (Company)</label>
+                    <input type="text" id="company_name" placeholder="e.g., SSFC">
+                </div>
+                <button type="button" class="btn btn-success" onclick="saveDocumentInfo()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                    </svg>
+                    Save
+                </button>
+            </div>
+        </div>
+
         <!-- Add New Item -->
         <div class="card">
             <h2>
@@ -451,8 +486,44 @@
             div.textContent = text;
             return div.innerHTML;
         }
+
+        // Document Info functions
+        async function loadDocumentInfo() {
+            try {
+                const response = await fetch(`${API_BASE}/settings`);
+                const settings = await response.json();
+                document.getElementById('creation_date').value = settings.creation_date || '';
+                document.getElementById('last_revision_date').value = settings.last_revision_date || '';
+                document.getElementById('edition').value = settings.edition || '';
+                document.getElementById('company_name').value = settings.company_name || '';
+            } catch (error) {
+                console.error('Error loading document info:', error);
+            }
+        }
+
+        async function saveDocumentInfo() {
+            try {
+                const data = {
+                    creation_date: document.getElementById('creation_date').value,
+                    last_revision_date: document.getElementById('last_revision_date').value,
+                    edition: document.getElementById('edition').value,
+                    company_name: document.getElementById('company_name').value
+                };
+                const response = await fetch(`${API_BASE}/settings`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (!response.ok) throw new Error('Failed to save');
+                showToast('Document info saved successfully!');
+            } catch (error) {
+                console.error('Error saving document info:', error);
+                showToast('Failed to save document info', true);
+            }
+        }
         
         // Initialize
+        loadDocumentInfo();
         loadItems();
     </script>
 </body>

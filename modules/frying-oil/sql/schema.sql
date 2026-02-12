@@ -65,5 +65,9 @@ BEGIN
     
     -- Default settings
     INSERT INTO OilSettings (setting_key, setting_value) VALUES ('document_prefix', 'OIL');
+    INSERT INTO OilSettings (setting_key, setting_value) VALUES ('creation_date', '2026-01-15');
+    INSERT INTO OilSettings (setting_key, setting_value) VALUES ('last_revision_date', '2026-01-15');
+    INSERT INTO OilSettings (setting_key, setting_value) VALUES ('edition', '1.0');
+    INSERT INTO OilSettings (setting_key, setting_value) VALUES ('company_name', 'GMRL Group');
 END
 GO

@@ -396,4 +396,73 @@ router.delete('/api/readings/:id', async (req, res) => {
     }
 });
 
+// ==========================================
+// API Routes - Settings
+// ==========================================
+
+// Get all settings
+router.get('/api/settings', async (req, res) => {
+    try {
+        const pool = await getPool();
+        
+        const result = await pool.request()
+            .query(`
+                SELECT setting_key, setting_value
+                FROM CookingCoolingSettings
+            `);
+        
+        // Convert to object
+        const settings = {};
+        result.recordset.forEach(row => {
+            settings[row.setting_key] = row.setting_value;
+        });
+        
+        res.json(settings);
+    } catch (error) {
+        console.error('Error fetching settings:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Update settings (batch)
+router.put('/api/settings', async (req, res) => {
+    try {
+        const pool = await getPool();
+        
+        // Update each setting
+        for (const [key, value] of Object.entries(req.body)) {
+            // Check if setting exists
+            const existsResult = await pool.request()
+                .input('key', sql.NVarChar, key)
+                .query('SELECT id FROM CookingCoolingSettings WHERE setting_key = @key');
+            
+            if (existsResult.recordset.length > 0) {
+                // Update existing
+                await pool.request()
+                    .input('key', sql.NVarChar, key)
+                    .input('value', sql.NVarChar, value)
+                    .query(`
+                        UPDATE CookingCoolingSettings 
+                        SET setting_value = @value, updated_at = GETDATE()
+                        WHERE setting_key = @key
+                    `);
+            } else {
+                // Insert new
+                await pool.request()
+                    .input('key', sql.NVarChar, key)
+                    .input('value', sql.NVarChar, value)
+                    .query(`
+                        INSERT INTO CookingCoolingSettings (setting_key, setting_value)
+                        VALUES (@key, @value)
+                    `);
+            }
+        }
+        
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error updating settings:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;

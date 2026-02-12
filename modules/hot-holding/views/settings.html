@@ -326,6 +326,38 @@
 
     <div class="container">
         <div class="settings-grid">
+            <!-- Document Information -->
+            <div class="settings-card">
+                <div class="card-header">
+                    <i class="fas fa-file-alt"></i>
+                    <h2>Document Information</h2>
+                </div>
+                <div class="card-body">
+                    <div class="threshold-grid">
+                        <div class="threshold-row">
+                            <label>Creation Date:</label>
+                            <input type="date" id="creation_date">
+                        </div>
+                        <div class="threshold-row">
+                            <label>Last Revision:</label>
+                            <input type="date" id="last_revision_date">
+                        </div>
+                        <div class="threshold-row">
+                            <label>Edition:</label>
+                            <input type="text" id="edition" placeholder="e.g., 1.0">
+                        </div>
+                        <div class="threshold-row">
+                            <label>Reference:</label>
+                            <input type="text" id="company_name" placeholder="e.g., GMRL Group">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary btn-save" onclick="saveDocumentInfo()">
+                        <i class="fas fa-save"></i>
+                        Save Document Info
+                    </button>
+                </div>
+            </div>
+            
             <!-- Temperature Thresholds -->
             <div class="settings-card">
                 <div class="card-header">
@@ -394,8 +426,49 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             loadSettings();
+            loadDocumentInfo();
             loadProducts();
         });
+
+        async function loadDocumentInfo() {
+            try {
+                const response = await fetch('/hot-holding/api/settings', {
+                    cache: 'no-store',
+                    headers: { 'Cache-Control': 'no-cache' }
+                });
+                const settings = await response.json();
+                
+                document.getElementById('creation_date').value = settings.creation_date || '';
+                document.getElementById('last_revision_date').value = settings.last_revision_date || '';
+                document.getElementById('edition').value = settings.edition || '';
+                document.getElementById('company_name').value = settings.company_name || '';
+            } catch (error) {
+                console.error('Error loading document info:', error);
+            }
+        }
+
+        async function saveDocumentInfo() {
+            try {
+                const data = {
+                    creation_date: document.getElementById('creation_date').value,
+                    last_revision_date: document.getElementById('last_revision_date').value,
+                    edition: document.getElementById('edition').value,
+                    company_name: document.getElementById('company_name').value
+                };
+                
+                const response = await fetch('/hot-holding/api/settings', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (!response.ok) throw new Error('Failed to save');
+                showToast('Document info saved successfully!', 'success');
+            } catch (error) {
+                console.error('Error saving document info:', error);
+                showToast('Failed to save document info', 'error');
+            }
+        }
 
         async function loadSettings() {
             try {
