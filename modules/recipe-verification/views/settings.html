@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Recipe Verification Settings - FS Monitoring</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f3f4f6;
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
+            color: white;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px rgba(124, 58, 237, 0.3);
+        }
+        
+        .header-content {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 0.625rem 1.25rem;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.875rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+            border: none;
+        }
+        
+        .btn-primary {
+            background: white;
+            color: #7c3aed;
+        }
+        
+        .btn-primary:hover {
+            background: #f5f3ff;
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+        
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #059669;
+        }
+        
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+        
+        .btn-sm {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.75rem;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            margin-bottom: 1.5rem;
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .card-header h2 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #1f2937;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .form-group label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+        }
+        
+        .form-group input, .form-group select, .form-group textarea {
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+        
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #7c3aed;
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        
+        .items-list {
+            list-style: none;
+        }
+        
+        .item-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 1rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            margin-bottom: 0.75rem;
+            transition: all 0.2s;
+        }
+        
+        .item-card:hover {
+            border-color: #7c3aed;
+            box-shadow: 0 2px 8px rgba(124, 58, 237, 0.1);
+        }
+        
+        .item-info h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 0.25rem;
+        }
+        
+        .item-info .ingredients {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-bottom: 0.25rem;
+        }
+        
+        .item-info .tasting {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            font-style: italic;
+        }
+        
+        .item-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-shrink: 0;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .modal-header h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #6b7280;
+        }
+        
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e5e7eb;
+        }
+        
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+        
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+        
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: #6b7280;
+        }
+        
+        .empty-state svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+        
+        @media (max-width: 640px) {
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <h1>⚙️ Recipe Verification Settings</h1>
+            <div class="header-actions">
+                <a href="/recipe-verification" class="btn btn-secondary">← Back</a>
+                <a href="/dashboard" class="btn btn-secondary">🏠 Dashboard</a>
+            </div>
+        </div>
+    </header>
+    
+    <div class="container">
+        <!-- Alert Messages -->
+        <div id="alertContainer"></div>
+        
+        <!-- Document Information Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2>📄 Document Information</h2>
+                <button class="btn btn-success btn-sm" onclick="saveDocumentInfo()">💾 Save</button>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="creationDate">Creation Date</label>
+                    <input type="date" id="creationDate">
+                </div>
+                <div class="form-group">
+                    <label for="lastRevision">Last Revision</label>
+                    <input type="date" id="lastRevision">
+                </div>
+                <div class="form-group">
+                    <label for="edition">Edition</label>
+                    <input type="text" id="edition" placeholder="e.g., 1.0">
+                </div>
+                <div class="form-group">
+                    <label for="reference">Reference</label>
+                    <input type="text" id="reference" placeholder="e.g., GMRL-RV-001">
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recipe Items Management Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2>🍽️ Recipe Items Management</h2>
+                <button class="btn btn-success" onclick="showAddItemModal()">➕ Add Item</button>
+            </div>
+            
+            <div id="itemsList" class="items-list">
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                        <path d="M2 17l10 5 10-5"/>
+                        <path d="M2 12l10 5 10-5"/>
+                    </svg>
+                    <p>No recipe items configured yet.<br>Click "Add Item" to create your first recipe item.</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Info Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2>ℹ️ Recipe Verification Information</h2>
+            </div>
+            <p style="color: #6b7280; line-height: 1.6;">
+                The Recipe Verification Checklist is used to verify that prepared food items meet the required standards. 
+                Configure recipe items with their ingredients and tasting criteria. When users fill out the form, 
+                they will select from predefined items and verify quality, ingredients weight, packaging, and more.
+            </p>
+        </div>
+    </div>
+    
+    <!-- Add/Edit Item Modal -->
+    <div class="modal" id="itemModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="itemModalTitle">Add Recipe Item</h3>
+                <button class="modal-close" onclick="closeItemModal()">×</button>
+            </div>
+            <form id="itemForm">
+                <input type="hidden" id="itemId">
+                <div class="form-group">
+                    <label for="itemName">Item Name *</label>
+                    <input type="text" id="itemName" required placeholder="e.g., Tuna Sandwich">
+                </div>
+                <div class="form-group">
+                    <label for="itemIngredients">Ingredients *</label>
+                    <textarea id="itemIngredients" rows="3" required placeholder="e.g., Brown Sandwich, Mayo Sriracha Sauce, Iceberg, Tuna Mix"></textarea>
+                    <small style="color: #6b7280;">Separate ingredients with commas</small>
+                </div>
+                <div class="form-group">
+                    <label for="itemTasting">Tasting Criteria</label>
+                    <textarea id="itemTasting" rows="2" placeholder="e.g., Fresh taste, well-mixed filling, proper seasoning"></textarea>
+                </div>
+            </form>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeItemModal()">Cancel</button>
+                <button class="btn btn-success" onclick="saveItem()">💾 Save Item</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Delete Confirmation Modal -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Confirm Delete</h3>
+                <button class="modal-close" onclick="closeDeleteModal()">×</button>
+            </div>
+            <p>Are you sure you want to delete this recipe item? This action cannot be undone.</p>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+                <button class="btn btn-danger" onclick="confirmDelete()">🗑️ Delete</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = '/recipe-verification/api';
+        let deleteItemId = null;
+        
+        // Show alert message
+        function showAlert(message, type = 'success') {
+            const container = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            container.appendChild(alert);
+            
+            setTimeout(() => alert.remove(), 5000);
+        }
+        
+        // Load settings
+        async function loadSettings() {
+            try {
+                const response = await fetch(`${API_BASE}/settings`);
+                const settings = await response.json();
+                
+                const settingsMap = {};
+                settings.forEach(s => settingsMap[s.setting_key] = s.setting_value);
+                
+                document.getElementById('creationDate').value = settingsMap.creation_date || '';
+                document.getElementById('lastRevision').value = settingsMap.last_revision || '';
+                document.getElementById('edition').value = settingsMap.edition || '';
+                document.getElementById('reference').value = settingsMap.reference || '';
+            } catch (error) {
+                console.error('Error loading settings:', error);
+            }
+        }
+        
+        // Save document info
+        async function saveDocumentInfo() {
+            try {
+                const settings = {
+                    creation_date: document.getElementById('creationDate').value,
+                    last_revision: document.getElementById('lastRevision').value,
+                    edition: document.getElementById('edition').value,
+                    reference: document.getElementById('reference').value
+                };
+                
+                const response = await fetch(`${API_BASE}/settings`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+                
+                if (response.ok) {
+                    showAlert('Document information saved successfully!');
+                } else {
+                    throw new Error('Failed to save');
+                }
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                showAlert('Failed to save document information', 'error');
+            }
+        }
+        
+        // Load recipe items
+        async function loadItems() {
+            try {
+                const response = await fetch(`${API_BASE}/recipe-items`);
+                const items = await response.json();
+                
+                const container = document.getElementById('itemsList');
+                
+                if (items.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                                <path d="M2 17l10 5 10-5"/>
+                                <path d="M2 12l10 5 10-5"/>
+                            </svg>
+                            <p>No recipe items configured yet.<br>Click "Add Item" to create your first recipe item.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                container.innerHTML = items.map(item => `
+                    <div class="item-card">
+                        <div class="item-info">
+                            <h4>${escapeHtml(item.item_name)}</h4>
+                            <p class="ingredients">📦 ${escapeHtml(item.ingredients)}</p>
+                            ${item.tasting_criteria ? `<p class="tasting">👅 ${escapeHtml(item.tasting_criteria)}</p>` : ''}
+                        </div>
+                        <div class="item-actions">
+                            <button class="btn btn-primary btn-sm" onclick="editItem(${item.id})">✏️ Edit</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteItem(${item.id})">🗑️</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading items:', error);
+                showAlert('Failed to load recipe items', 'error');
+            }
+        }
+        
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Show add item modal
+        function showAddItemModal() {
+            document.getElementById('itemModalTitle').textContent = 'Add Recipe Item';
+            document.getElementById('itemForm').reset();
+            document.getElementById('itemId').value = '';
+            document.getElementById('itemModal').classList.add('active');
+        }
+        
+        // Close item modal
+        function closeItemModal() {
+            document.getElementById('itemModal').classList.remove('active');
+        }
+        
+        // Edit item
+        async function editItem(id) {
+            try {
+                const response = await fetch(`${API_BASE}/recipe-items/${id}`);
+                const item = await response.json();
+                
+                document.getElementById('itemModalTitle').textContent = 'Edit Recipe Item';
+                document.getElementById('itemId').value = item.id;
+                document.getElementById('itemName').value = item.item_name;
+                document.getElementById('itemIngredients').value = item.ingredients;
+                document.getElementById('itemTasting').value = item.tasting_criteria || '';
+                
+                document.getElementById('itemModal').classList.add('active');
+            } catch (error) {
+                console.error('Error loading item:', error);
+                showAlert('Failed to load item details', 'error');
+            }
+        }
+        
+        // Save item
+        async function saveItem() {
+            const id = document.getElementById('itemId').value;
+            const data = {
+                item_name: document.getElementById('itemName').value,
+                ingredients: document.getElementById('itemIngredients').value,
+                tasting_criteria: document.getElementById('itemTasting').value
+            };
+            
+            if (!data.item_name || !data.ingredients) {
+                showAlert('Please fill in all required fields', 'error');
+                return;
+            }
+            
+            try {
+                const url = id ? `${API_BASE}/recipe-items/${id}` : `${API_BASE}/recipe-items`;
+                const method = id ? 'PUT' : 'POST';
+                
+                const response = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    closeItemModal();
+                    loadItems();
+                    showAlert(id ? 'Recipe item updated!' : 'Recipe item added!');
+                } else {
+                    throw new Error('Failed to save');
+                }
+            } catch (error) {
+                console.error('Error saving item:', error);
+                showAlert('Failed to save recipe item', 'error');
+            }
+        }
+        
+        // Delete item
+        function deleteItem(id) {
+            deleteItemId = id;
+            document.getElementById('deleteModal').classList.add('active');
+        }
+        
+        // Close delete modal
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.remove('active');
+            deleteItemId = null;
+        }
+        
+        // Confirm delete
+        async function confirmDelete() {
+            if (!deleteItemId) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/recipe-items/${deleteItemId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    closeDeleteModal();
+                    loadItems();
+                    showAlert('Recipe item deleted!');
+                } else {
+                    throw new Error('Failed to delete');
+                }
+            } catch (error) {
+                console.error('Error deleting item:', error);
+                showAlert('Failed to delete recipe item', 'error');
+            }
+        }
+        
+        // Initialize
+        loadSettings();
+        loadItems();
+    </script>
+</body>
+</html>
